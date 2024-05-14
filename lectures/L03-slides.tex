@@ -121,6 +121,14 @@
 
 \end{frame}
 
+\begin{frame}
+	\frametitle{File Operations (cont.)}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/AJW8x}
+	\end{center}
+	{\tiny Image credit: \url{https://stackoverflow.com/questions/21113919/difference-between-r-and-w-in-fopen}}
+\end{frame}
+
 
 \begin{frame}[fragile]
 	\frametitle{Opening and Closing Files}
@@ -421,9 +429,9 @@ int main( int argc, char** argv ){
 
 	The file \texttt{example.c} is in a subdirectory of the current directory called \texttt{code}.
 
-	The system will work out that we need to start from the current directory (e.g., \texttt{/home/jz/ece252/}) and prepend that to the given file name.
+	The system will work out that we need to start from the current directory (e.g., \texttt{/home/smzahedi/ece252/}) and prepend that to the given file name.
 
-	This produces the absolute path of \texttt{/home/jz/ece252/code/example.c}.
+	This produces the absolute path of \texttt{/home/smzahedi/ece252/code/example.c}.
 
 \end{frame}
 
@@ -469,7 +477,7 @@ int main( int argc, char** argv ){
 
 	Symlinks, or symbolic links, are just references by file name.
 
-	So if a symbolic link is created to a file like \texttt{/Users/jz/file.txt}, the symbolic link will just be a ``shortcut'' to that file.
+	So if a symbolic link is created to a file like \texttt{/Users/smzahedi/file.txt}, the symbolic link will just be a ``shortcut'' to that file.
 
 	If the file is later deleted, the symbolic link is left pointing to nothing.
 
