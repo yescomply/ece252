@@ -2,10 +2,10 @@
 
 \title{Lecture 9 --- Pipes and Shared Memory}
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -151,7 +151,7 @@
     fprintf(stderr, "Fork Failed"); 
     return 1;
   }
- if (pid > 0) { /* parent process */
+  if (pid > 0) { /* parent process */
     /* close the unused end of the pipe */ 
     close(fd[READ_END]);
     
@@ -398,19 +398,19 @@ int main( int argc, char** argv ) {
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Please Do Not Leave Your Memory Unattended}
-	
-	Concern: can anyone who knows the key/ID attach to my shared memory?
-	
-    No - it's only possible to attach to memory segments of your own processes. 
-	
-    A process run by user j999doe can only attach to memory shared by another process run by that user.
-
-	
-    The owner can reassign ownership with the \texttt{shmctl()} call, but this is beyond the scope of the course.
-	
-\end{frame}
+%\begin{frame}
+%	\frametitle{Please Do Not Leave Your Memory Unattended}
+%
+%	Concern: can anyone who knows the key/ID attach to my shared memory?
+%
+%    No - it's only possible to attach to memory segments of your own processes.
+%
+%    A process run by user j999doe can only attach to memory shared by another process run by that user.
+%
+%
+%    The owner can reassign ownership with the \texttt{shmctl()} call, but this is beyond the scope of the course.
+%
+%\end{frame}
 
 \begin{frame}
 	\frametitle{Consult the Map}
