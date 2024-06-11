@@ -425,6 +425,29 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
+	\frametitle{Merge Sort Example}
+
+	Recall from data structures and algorithms the concept of merge sort.
+
+	This is a divide-and-conquer algorithm like binary search.
+
+	Split the array of values up into smaller pieces, sort those, and then merge the smaller pieces together to have sorted data.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Merge Sort Example}
+
+	\begin{center}
+		\includegraphics[width=0.75\textwidth]{images/multithread-sort.png}
+	\end{center}
+
+
+\end{frame}
+
+\begin{frame}
 	\frametitle{Parallelism and Speedup}
 
 	Depends on the nature of the task!
@@ -443,6 +466,7 @@ int main( int argc, char** argv ) {
 
 	\begin{center}
 		\includegraphics[width=\textwidth]{images/lamb-sauce.jpg}
+
 	\end{center}
 
 \end{frame}
@@ -478,7 +502,9 @@ int main( int argc, char** argv ) {
 	Amdahl's Law:
 
 	\begin{center}
-		speedup $\leq$ {\huge $\frac{1}{S + \frac{1-S}{N}}$}
+		\[
+			\text{speedup} \leq \frac{1}{S + \frac{1-S}{N}}
+		\]
 	\end{center}
 
 \end{frame}
@@ -532,30 +558,13 @@ int main( int argc, char** argv ) {
 
 \end{frame}
 
-
 \begin{frame}
-	\frametitle{Merge Sort Example}
-
-	Recall from data structures and algorithms the concept of merge sort.
-
-	This is a divide-and-conquer algorithm like binary search.
-
-	Split the array of values up into smaller pieces, sort those, and then merge the smaller pieces together to have sorted data.
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Merge Sort Example}
-
+	\frametitle{Speedup as Function of \# Processors}
 	\begin{center}
-		\includegraphics[width=0.75\textwidth]{images/multithread-sort.png}
+		\includegraphics[width=0.75\textwidth]{images/AmdahlsLaw}
+
+		{\footnotesize Image credit: wikipedia}
 	\end{center}
-
-
 \end{frame}
-
-
 
 \end{document}
