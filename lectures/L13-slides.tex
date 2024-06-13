@@ -118,7 +118,7 @@
 
 	Each ship had someone holding certain flags in a specific position.
 
-	Thus the two ships could co-ordinate at (visual range) distance.
+	Thus, the two ships could co-ordinate at (visual range) distance.
 
 	This worked dramatically better than many alternatives (e.g., shouting).
 
@@ -131,7 +131,7 @@
 	\begin{center}
 		\includegraphics[width=0.9\textwidth]{images/semaphore-signals.jpg}
 	\end{center}
-	\hfill Image Credit: Wikipedia user Denelson83
+	{\footnotesize \hfill Image Credit: Wikipedia user Denelson83}
 
 \end{frame}
 
@@ -149,11 +149,11 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Binary Semaphore}
+	\frametitle{Semaphore}
 
-	The \alert{binary semaphore}: this is a variable that has two values, 0 and 1.
+	Semaphore is a \alert{non-negative} integer variable.
 
-	It can be initialized to 0 or to 1.
+	It can be initialized to 0 or a positive integer.
 
 	The semaphore has two operations: \texttt{wait} and \texttt{post}.
 
@@ -165,32 +165,45 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Binary Semaphore: wait}
+	\frametitle{Semaphore: Wait}
 
-	The \texttt{wait} operation on the semaphore is how a program tries to enter the critical section.
+	When \texttt{wait} is called, if the semaphore value is positive, it is decremented, and the calling thread may continue.
 
-	When \texttt{wait} is called, if the semaphore value is 1, set it to 0 and this thread may enter the critical section and continue.
-
-	If the semaphore is 0, some other thread is in the critical section and the current thread must \textit{wait} its turn.
+	If the semaphore is 0, the current thread must \textit{wait} its turn.
 
 	The thread that called \texttt{wait} will be blocked by the operating system, just as if it asked for memory or a disk operation.
 
-	This is sometimes referred to as decrementing the semaphore (because the value changes from 1 to 0).
+	This is sometimes referred to as \emph{decrementing} the semaphore.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Binary Semaphore: post}
+	\frametitle{Semaphore: Post}
 
-	The \texttt{post} (or signal) operation is how a program \textit{signals}, or indicates, it is finished with the critical section.
+	The \texttt{post} (or signal) operation is how a thread \textit{signals} the waiting thread(s).
 
-	When this is called, if the semaphore is 1, do nothing.
+	When this is called, if the semaphore is 0 and there is at least one other thread blocked awaiting that semaphore, one of the blocked threads may be unblocked.
 
-	If the semaphore is 0 and there is a task blocked awaiting that semaphore, that task may be unblocked.
+	Otherwise, the semaphore value is incremented.
 
-	Otherwise, set the semaphore to 1.
+	This is also sometimes called \emph{incrementing} the semaphore.
 
-	This is also sometimes called incrementing the semaphore.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Mutal Exclusion with (Binary) Semaphore}
+
+	Initialize the semaphore to 1.
+
+	The \texttt{wait} operation is how a thread tries to enter the critical section.
+
+	When \texttt{wait} is called, if the semaphore value is 1, it is set to 0, allowing the thread to enter the critical section and continue.
+	Otherwise, the current thread is blocked.
+
+	The \texttt{post} operation is how a thread exits the critical section.
+
+	When \texttt{post} is called, if the semaphore is 0 and there is at least one other thread blocked, one of the blocked threads may be unblocked.
+	Otherwise, the semaphore is incremented.
 
 \end{frame}
 
@@ -200,7 +213,7 @@
 	\begin{center}
 		\includegraphics[width=0.4\textwidth]{images/starbucks.jpg}
 	\end{center}
-	\hfill Image Credit: Brandt Kofton
+	{\footnotesize \hfill Image Credit: Brandt Kofton}
 
 
 	Analogy: you like coffee, and going to a particular coffee shop because there you can get your drink exactly the way you like it.
@@ -229,7 +242,7 @@
 
 	When the key is returned, if anyone is waiting, the employee will give the key to the first person in line for the washroom.
 
-	Otherwise they will put the key away behind the counter.
+	Otherwise, they will put the key away behind the counter.
 
 
 \end{frame}
@@ -244,8 +257,6 @@
 	The operating system knows not to schedule it to run until it is unblocked.
 
 	When thread $B$ is finished and signals the semaphore it is holding, that will unblock $A$ and allow it to run again.
-
-
 \end{frame}
 
 \begin{frame}
@@ -259,7 +270,8 @@
 
 	A thread doesn't know in advance if it will block when it waits on a semaphore.
 
-	It can only give it a shot. Either it will be blocked or proceed directly.
+	It can only give it a shot.
+	Either it will be blocked or proceed directly.
 
 \end{frame}
 
@@ -302,19 +314,6 @@
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Preventing Bad Behaviour}
-
-	The problem identified is usually solved by supplementing the basic binary semaphore.
-
-	A data structure called a \alert{mutex} is a binary semaphore with an additional rule enforced: only the thread that has called \texttt{wait} may \texttt{post} that semaphore.
-
-	Although typically when we have a mutex we use the terms \alert{lock} and \alert{unlock}.
-
-	This adds a small amount of extra bookkeeping to the semaphore, but this is a reasonable price to pay.
-
-\end{frame}
-
 \begin{frame}[fragile]
 	\frametitle{Semaphore Example: Linked List Integrity}
 
@@ -336,7 +335,7 @@ void single_list_init( single_list_t *list ) {
   list->tail = NULL;
   list->size = 0;
 }
-\end{lstlisting}
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -358,11 +357,10 @@ bool push_front( single_list_t *list, void *obj ) {
      list->tail = tmp;
   }
   
-   ++( list->size );
-   return true;
+  ++( list->size );
+  return true;
 }
-
-\end{lstlisting}
+	\end{lstlisting}
 \end{frame}
 
 
@@ -422,31 +420,13 @@ bool push_front( single_list_t *list, void *obj ) {
 
 	An attempt to remove an element from the list will reveal the problem.
 
-	Remove the front element? Check if \texttt{head} and \texttt{tail} are equal. That may give the mistaken impression that $B$ is the last element in the list. We lost $A$!
+	Remove the front element?
+	Check if \texttt{head} and \texttt{tail} are equal.
+	That may give the mistaken impression that $B$ is the last element in the list.
+	We lost $A$!
 
 	Or the \texttt{head} pointer will be updated but \texttt{tail} will still point to $B$ even after it has been freed, which can result in a segmentation fault or invalid access.
 
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Semaphore Syntax}
-
-	The linked list problem just discussed can be solved easily if a semaphore is employed.
-
-	Binary semaphores are useful, and we can generalize this concept to what is known as a \textit{counting} or \textit{general} semaphore.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{General Semaphores}
-
-	If a thread attempts to wait on a semaphore and the decrement operation makes the integer value negative, the calling thread is blocked.
-
-	If initialized with 5 and the current value is 2, a thread that waits on that general semaphore will not be blocked.
-
-	In some operating systems there is no distinction between binary and counting semaphores (create a general semaphore with a value of 1).
 
 \end{frame}
 
@@ -460,7 +440,7 @@ sem_init( sem_t* semaphore, int shared, int initial_value);
 sem_destroy( sem_t* semaphore )
 sem_wait( sem_t* semaphore )
 sem_post( sem_t* semaphore )
-\end{lstlisting}
+	\end{lstlisting}
 
 \end{frame}
 
@@ -487,8 +467,7 @@ void single_list_init( single_list_t *list ) {
 
   sem_init( &( list->sem ), 0, 1 );
 }
-\end{lstlisting}
-
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -513,9 +492,7 @@ bool push_front( single_list_t *list, void *obj ) {
   } sem_post( &( list->sem ) );
   return true;
 }
-\end{lstlisting}
-
-
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}
