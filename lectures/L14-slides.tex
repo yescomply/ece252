@@ -404,7 +404,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 
 	We saw previously the motivation and concept of mutual exclusion through messages in the linked list example.
 
-	The general form in pseudocode is of course:
+	The general form in pseudocode for binary semaphore \texttt{mutex} (i.e., semaphore initialized to 1) is of course:
 
 	\begin{multicols}{2}
 		\textbf{Thread A}
@@ -429,11 +429,9 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 \begin{frame}
 	\frametitle{Mutual Exclusion}
 
-	The mutex semaphore is originally initialized to 1.
-
 	Whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all.
 
-	If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
+	If \texttt{mutex} semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
 
 
 \end{frame}
