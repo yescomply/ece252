@@ -2,10 +2,10 @@
 
 \title{Lecture 14 --- Synchronization Patterns }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -57,13 +57,13 @@
 		\begin{verbatim}
 	1. Statement A1
 	2. post( sem )
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Thread B}
+		\textbf{Thread B}\vspace{-2em}
 		\begin{verbatim}
 	1. wait( sem )
 	2. Statement B2
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -111,13 +111,13 @@
 		\begin{verbatim}
 	1. Statement A1
 	2. Statement A2
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Thread B}
+		\textbf{Thread B}\vspace{-2em}
 		\begin{verbatim}
 	1. Statement B1
 	2. Statement B2
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -148,15 +148,15 @@
 	2. wait( bArrived )
 	3. post( aArrived )
 	4. Statement A2
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Thread B}
+		\textbf{Thread B}\vspace{-2em}
 		\begin{verbatim}
 	1. Statement B1
 	2. wait( aArrived )
 	3. post( bArrived )
 	4. Statement B2
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -202,15 +202,15 @@
 	2. post( aArrived )
 	3. wait( bArrived )
 	4. Statement A2
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Thread B}
+		\textbf{Thread B}\vspace{-2em}
 		\begin{verbatim}
 	1. Statement B1
 	2. post( bArrived )
 	3. wait( aArrived )
 	4. Statement B2
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -243,15 +243,15 @@
 	2. wait( bArrived )
 	3. post( aArrived )
 	4. Statement A2
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Thread B}
+		\textbf{Thread B}\vspace{-2em}
 		\begin{verbatim}
 	1. Statement B1
 	2. post( bArrived )
 	3. wait( aArrived )
 	4. Statement B2
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -293,7 +293,7 @@
 	3. wait( bArrived )
 	4. wait( cArrived )
 	5. Statement A2
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
 		\textbf{Thread B}
 		\begin{verbatim}
@@ -302,16 +302,16 @@
 	3. wait( aArrived )
 	4. wait( cArrived )
 	5. Statement B2
-  \end{verbatim}
+  		\end{verbatim}
   		\columnbreak
-		\textbf{Thread C}
+		\textbf{Thread C}\vspace{-2em}
 		\begin{verbatim}
 	1. Statement C1
 	2. post( cArrived )
 	3. wait( aArrived )
 	4. wait( bArrived )
 	5. Statement C2
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -360,7 +360,7 @@ Analysis tool: look at the number of wait and post statements.\\
 	6. Statement B2
   \end{verbatim}
   		\columnbreak
-		\textbf{Thread C}
+		\textbf{Thread C}\vspace{-2em}
 		\begin{verbatim}
 	1. Statement C1
 	2. post( cArrived )
@@ -414,12 +414,12 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	3. post( mutex )
   \end{verbatim}
 		\columnbreak
-		\textbf{Thread B}
+		\textbf{Thread B}\vspace{-2em}
 		\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -495,7 +495,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 	This looks exactly like the solution for mutual exclusion, as it should.
@@ -537,7 +537,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 \begin{frame}
 	\frametitle{Barrier}
 
-	Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter.
+	Thus, we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter.
 
 	Then we will have a second semaphore, \texttt{barrier} that will be the place where threads wait until the $n$th thread arrives.
 
@@ -556,7 +556,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	5.     post( barrier )
 	6. end if
 	7. wait( barrier )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 
@@ -604,7 +604,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	7.     end for
 	8. end if
 	9. wait( barrier )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 
@@ -643,7 +643,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	6. end if
 	7. wait( barrier )
 	8. post( barrier )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 
@@ -694,7 +694,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	6. wait( barrier )
 	7. post( barrier )
 	8. post( mutex )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 \end{frame}
@@ -761,7 +761,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	13. if count == 0
 	14.     wait( turnstile )
 	15. end if
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 \end{frame}
@@ -800,7 +800,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	13.     wait( turnstile )
 	14. end if
 	15. post( mutex )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 \end{frame}
@@ -857,7 +857,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	17. post( mutex )
 	18. wait( turnstile2 )
 	19. post( turnstile2 )
-  \end{verbatim}
+  	\end{verbatim}
 	\vspace{-2em}
 
 
