@@ -29,9 +29,10 @@ Recall from earlier the example with Alice and Bob at the power plant. This was 
 If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore. When $A$ does call \texttt{post}, then $B$ may proceed. If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1. Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay. Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
 
 Note that this is a situation where it makes sense for a thread to post a semaphore even if it is not the thread that waited on that semaphore. Thus, sometimes, the semaphore is appropriate and the mutex structure is not necessary in every circumstance.
-
+\newpage
 \subsection*{Rendezvous}
 The rendezvous is an expansion of the signalling pattern so that it works both ways: two threads should be at the same point before either of them may proceed (they ``meet up''). Given the following code:
+
 
 \begin{multicols}{2}
 	\textbf{Thread A}\vspace{-2em}
@@ -213,7 +214,7 @@ This is a solution that allows all of the $n$ threads to proceed (none get stuck
 
 This pattern of a wait followed immediately by a post is a common pattern called a \textit{turnstile}. The analogy should be familiar to anyone who has travelled by subway (e.g., in Toronto or NYC): a turnstile allows one person at a time to go through. A turnstile pattern allows one thread at a time to proceed through, but can be locked to bar all threads from proceeding. Initially the turnstile in the above example is locked, and the $n$th thread unlocks it and permits all $n$ threads to go through.
 
-Alert readers may have noticed something that causes some minor distress: on line 4 in this solution (and the previous, suboptimal one), we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore. Is this dangerous? Yes, but the alternative is, in this specific instance, worse. Consider this instead:
+Alert readers may have noticed something that causes some minor distress: on line 4 in this solution (and the previous, suboptimal one), we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore. Is this dangerous? Yes, but some alternatives could be worse. For instance, consider the following:
 
 \textbf{Thread \textit{K}}\vspace{-2em}
 \begin{verbatim}
