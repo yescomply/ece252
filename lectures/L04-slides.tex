@@ -104,7 +104,7 @@
 	\frametitle{Process Control Block (Simplified)}
 
 	\begin{center}
-		\includegraphics[width=0.35\textwidth]{images/pcb.png}
+		\includegraphics[width=0.3\textwidth]{images/pcb.png}
 	\end{center}
 
 \end{frame}
@@ -308,7 +308,7 @@
 	The last reason for termination: one process might be killed by another.\\
 	\quad (Yes, processes can murder one another. Is no-one safe?!).
 
-	Typically this is a user request:\\
+	Typically, this is a user request:\\
 	\quad a program is stuck or consuming too much CPU...\\
 	\quad the user opens task manager (Windows) or \texttt{ps} (UNIX)
 
@@ -324,7 +324,7 @@
 	There are restrictions on killing process.\\
 	\quad A user or process must have the rights to execute the victim.
 
-	Typically a user may only kill a process he or she has created.
+	Typically, a user may only kill a process he or she has created.
 
 	Exception: system administrator.
 
@@ -357,7 +357,7 @@
 	It is the parent of all processes (eventually).\\
 	\quad Like the \texttt{Object} class in Java is the superclass of all classes.
 
-	Thus in UNIX we may represent all processes as a tree structure.
+	Thus, in UNIX we may represent all processes as a tree structure.
 
 \end{frame}
 
@@ -381,7 +381,7 @@
 	When a process terminates, it does so with a return code.\\
 	\quad  Just as a function often returns a value.
 
-	On the command line or double clicking an icon, return value is ignored.
+	On the command line or double-clicking an icon, return value is ignored.
 
 	In UNIX, a parent can get the code that process returns.
 
@@ -471,7 +471,7 @@
 	\frametitle{Five State Model}
 
 	But we did not cover things like zombies.\\
-	\quad Life pro tip: the character who doubts that zombies are real dies first.
+	\quad Life pro-tip: the character who doubts that zombies are real dies first.
 
 	A UNIX process may be finished but its value yet uncollected.
 
@@ -613,7 +613,7 @@
 
 	We need to know if a particular process is in memory or on disk.
 
-	Thus we need a new state: swapped.
+	Thus, we need a new state: swapped.
 
 	Ideally, we will only swap a process to disk if it is blocked.
 
