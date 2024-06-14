@@ -2,10 +2,10 @@
 
 \title{Lecture 15 --- The Producer-Consumer Problem }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -384,76 +384,6 @@ int main( int argc, char** argv ) {
 	\end{center}
 
 \end{frame}
-
-
-\begin{frame}
-	\frametitle{Mutex Syntax}
-
-	We should take a moment to learn about the syntax of the pthread mutex.
-
-	While it is possible, of course, to use a semaphore as a mutex, frequently we will use the more specialized tool for this task.
-
-	In fact, it's generally good practice to use the more specialized tool.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Mutex Syntax}
-
-	The structure representing the mutex is of type \texttt{pthread\_mutex\_t}.
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_init( pthread_mutex_t *mutex, pthread_mutexattr_t *attributes )
-\end{lstlisting}
-
-	\texttt{mutex}: the mutex to intiialize.
-
-	\texttt{attributes}: the attributes; \texttt{NULL} is fine for defaults.
-
-	Shortcut if you do not want to set attributes:
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
-\end{lstlisting}
-
-	By default, the mutex is created as unlocked.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Lock and Unlock}
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_lock( pthread_mutex_t *mutex )
-pthread_mutex_trylock( pthread_mutex_t *mutex ) /* Returns 0 on success */
-pthread_mutex_unlock( pthread_mutex_t *mutex )
-\end{lstlisting}
-
-	Unlock is self-explanatory.
-
-	\texttt{pthread\_mutex\_lock} is blocking.
-
-	\texttt{pthread\_mutex\_trylock} is nonblocking.
-
-	Trylock will come up again soon when we look at another classical synchronization problem.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Destroy the Mutex}
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_destroy( pthread_mutex_t *mutex )
-\end{lstlisting}
-
-	Destroy is also self-explanatory.
-
-	An attempt to destroy the mutex may fail if the mutex is currently locked.
-
-	Attempting to destroy a locked one results in undefined behaviour.
-
-\end{frame}
-
 
 \begin{frame}[fragile]
 	\frametitle{Multiple Producer-Consumer Example}

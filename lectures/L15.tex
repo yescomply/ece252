@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 15 --- The Producer-Consumer Problem }{\term}{Jeff Zarnett}
+\lecture{ 15 --- The Producer-Consumer Problem }{\term}{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi}
 
 \section*{Classical Synchronization Problems: Producer-Consumer}
 
@@ -205,32 +205,6 @@ int main( int argc, char** argv ) {
 }
 \end{lstlisting}
 
-\subsection*{Mutex Syntax}
-Before we go on to the the next code example, we should take a moment to learn about the syntax of the pthread mutex. While it is possible, of course, to use a semaphore as a mutex, frequently we will use the more specialized tool for this task.
-
-The structure representing the mutex is of type \texttt{pthread\_mutex\_t}. We don't care about the internals or what the struct is made of; it is either locked or unlocked and that's all that matters to us.
-
-\begin{lstlisting}[language=C]
-pthread_mutex_init( pthread_mutex_t *mutex, pthread_mutexattr_t *attributes )
-pthread_mutex_lock( pthread_mutex_t *mutex )
-pthread_mutex_trylock( pthread_mutex_t *mutex ) /* Returns 0 on success */
-pthread_mutex_unlock( pthread_mutex_t *mutex )
-pthread_mutex_destroy( pthread_mutex_t *mutex )
-\end{lstlisting}
-
-The first function of note is \texttt{pthread\_mutex\_init} which is used to create a new mutex variable and returns it, with type \texttt{pthread\_mutex\_t}. It takes an optional parameter, the attributes (the details of which are not important at the moment, but relate mostly to priorities). We can initialize it using \texttt{NULL} and that is sufficient. There is also a syntactic shortcut to do static initialization if you do not want to set attributes~\cite{pthreads}:
-
-\begin{lstlisting}[language=C]
-pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
-\end{lstlisting}
-
-When created, by default, the mutex is unlocked. There are three methods related to using the mutex; two to lock it and one to unlock it, all of which take as a parameter the mutex to (un)lock. The unlock method, \texttt{pthread\_mutex\_unlock} is self-explanatory. As expected, attempting to unlock a mutex that is not currently locked is an error, but it is also an error if one thread attempts to unlock a mutex owned by another thread~\cite{pthreads}.
-
-The two kinds of lock are \texttt{pthread\_mutex\_lock}, which is blocking, and \texttt{pthread\_mutex\_trylock}, which is nonblocking. The lock function works as you would expect: if the mutex is currently locked, the calling function is blocked until its turn to enter the critical section; if the mutex is unlocked then it changes to being locked and the current thread enters the critical section. Trylock is more complicated and not necessary for understanding the producer-consumer example, but will come up again soon when we look at another classical synchronization problem.
-
-To destroy a mutex, there is a method \texttt{pthread\_mutex\_destroy}. As expected, it cleans up a mutex and should be used when finished with it. If attributes were created with \texttt{pthread\_mutexattr\_init} they should be destroyed with \texttt{pthread\_mutexattr\_destroy}.
-
-An attempt to destroy the mutex may fail if the mutex is currently locked. The specification says that destroying an unlocked mutex is okay, but attempting to destroy a locked one results in undefined behaviour. Undefined behaviour is, in the words of the internet, the worst thing ever: it means code might work some of the time or on some systems, but not others, or could work fine for a while and then break suddenly later when something else is changed\footnote{Sadly, the specifications for C and POSIX and many other things are riddled with these ``undefined behaviour'' situations and it causes programmers everywhere a great deal of stress and difficulty. Another example: reading from an uninitialized variable in C produces undefined behaviour too.}.
 
 \subsection*{Parallelizing the Producer-Consumer Solution}
 Now suppose that we wanted to have ten producers and ten consumers. How do we get there from here?
