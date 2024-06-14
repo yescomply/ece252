@@ -1,0 +1,384 @@
+\input{configuration}
+
+\title{14-2 --- Monitors }
+
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+	University of Waterloo}
+\date{}
+
+
+\begin{document}
+
+\begin{frame}
+	\titlepage
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{What's Wrong With You?}
+
+	As we have seen so far, using semaphores correctly is not straightforward.
+
+	For example, changing the order of \texttt{wait} and \texttt{post} operations can easily lead to deadlock.
+
+	Semaphores serve a dual purpose: they are used for both \alert{mutual exclusion} and \alert{scheduling constraints}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Who Said What?}
+
+	Dijkstra himself noted this:
+
+	\vspace{1em}
+	\begin{displayquote}
+    	During system conception it transpired that we used the semaphores in two completely different ways.
+    	The difference is so marked that, looking back, one wonders whether it was really fair to present the two ways as uses of the very same primitives.
+    	On the one hand, we have the semaphores used for mutual exclusion, on the other hand, the private semaphores.
+	\end{displayquote}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Monitors}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/monitor.jpg}
+	\end{center}
+
+	Uh... wait... this isn't the right kind.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{What's a Monitor?}
+
+	A monitor consists of a \texttt{mutex} (lock) and at least one \texttt{condition variable} (CV).
+
+	Multiple CVs can be associated with the same mutex, but not vice versa.
+
+	The mutex is used for mutual exclusion, and CVs are used for scheduling constraints.
+
+	We will next look into pthread mutex and CVs.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Mutex Syntax}
+
+	While it is possible, of course, to use a semaphore as a mutex, a more specialized tool for this task is the pthread mutex.
+
+	In fact, it's generally good practice to use the more specialized tool.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Mutex Syntax}
+
+	The structure representing the mutex is of type \texttt{pthread\_mutex\_t}.
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_init( pthread_mutex_t *mutex, pthread_mutexattr_t *attributes )
+\end{lstlisting}
+
+	\texttt{mutex}: the mutex to intiialize.
+
+	\texttt{attributes}: the attributes; \texttt{NULL} is fine for defaults.
+
+	Shortcut if you do not want to set attributes:
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
+\end{lstlisting}
+
+	By default, the mutex is created as unlocked.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Lock and Unlock}
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_lock( pthread_mutex_t *mutex )
+pthread_mutex_trylock( pthread_mutex_t *mutex ) /* Returns 0 on success */
+pthread_mutex_unlock( pthread_mutex_t *mutex )
+\end{lstlisting}
+
+	Unlock is self-explanatory.
+
+	\texttt{pthread\_mutex\_lock} is blocking.
+
+	\texttt{pthread\_mutex\_trylock} is nonblocking.
+
+	Trylock will come up soon when we look at classical synchronization problems.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Destroy the Mutex}
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_destroy( pthread_mutex_t *mutex )
+\end{lstlisting}
+
+	Destroy is also self-explanatory.
+
+	An attempt to destroy the mutex may fail if the mutex is currently locked.
+
+	Attempting to destroy a locked one results in undefined behaviour.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Condition Variables}
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/monday.png}
+	\end{center}
+
+	Condition variables are another way to achieve synchronization.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Condition Variables}
+
+	How do we know if some condition has been fulfilled?
+
+	Signal on a semaphore?
+
+	Lock mutex, read variable(s), unlock mutex?
+
+	Or: a Condition Variable.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Condition Variable}
+
+	We can think of condition variables as ``events'' that occur.
+
+	What differentiates it: broadcast!
+
+	We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Syntax}
+
+	\begin{lstlisting}[language=C]
+pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
+pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
+pthread_cond_signal( pthread_cond_t *cv );
+pthread_cond_broadcast( pthread_cond_t *cv );
+pthread_cond_destroy( pthread_cond_t *cv );
+\end{lstlisting}
+
+	As with other pthread functions we've seen there are create and destroy calls.
+
+	Signal is self-explanatory; but broadcast is new and wait looks weird!
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Wait, in Two Parts}
+
+	Condition variables are always used in conjunction with a mutex.
+
+	\texttt{pthread\_cond\_wait} takes the condition variable and a mutex.
+
+	This routine should be called only while the mutex is locked.
+
+	It will automatically release the mutex while it waits for the condition!
+
+	When the condition is true, then the mutex will be automatically locked again so the thread may proceed.
+
+	Then, manually unlock when finished.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{HEY GUYS!!! GUESS WHAT!!!}
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/newsanchor.jpg}
+	\end{center}
+
+	\texttt{pthread\_cond\_broadcast} signals all threads waiting on that condition variable.
+
+	It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Example}
+
+	\begin{lstlisting}[language=C]
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NUM_THREADS  3
+#define COUNT_LIMIT 12
+
+int count = 0;
+pthread_mutex_t count_mutex;
+pthread_cond_t count_threshold_cv;
+
+void* inc_count( void* arg ) {
+  for (int i = 0; i < 10; i++ ) {
+    pthread_mutex_lock( &count_mutex );
+    count++;
+    if ( count == COUNT_LIMIT ) {
+      printf( "Condition Fulfilled!\n" );
+      pthread_cond_signal( &count_threshold_cv );
+      printf( "Sent signal.\n" );
+    }
+    pthread_mutex_unlock( &count_mutex );
+  }
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Example}
+
+	\begin{lstlisting}[language=C]
+void* watch_count( void *arg ) {
+  pthread_mutex_lock( &count_mutex );
+  if ( count < COUNT_LIMIT ) {
+    pthread_cond_wait( &count_threshold_cv, &count_mutex );
+    printf( "Watcher has woken up.\n" );
+    /* Do something useful here now that condition is fulfilled. */
+  }
+  pthread_mutex_unlock( &count_mutex );
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Example}
+	\begin{lstlisting}[language=C]
+int main( int argc, char **argv ) {
+  pthread_t threads[3];
+
+  pthread_mutex_init( &count_mutex, NULL );
+  pthread_cond_init ( &count_threshold_cv, NULL );
+
+  pthread_create( &threads[0], NULL, watch_count, NULL );
+  pthread_create( &threads[1], NULL, inc_count, NULL );
+  pthread_create( &threads[2], NULL, inc_count, NULL );
+
+  for ( int i = 0; i < NUM_THREADS; i++ ) {
+    pthread_join(threads[i], NULL);
+  }
+
+  pthread_mutex_destroy( &count_mutex );
+  pthread_cond_destroy( &count_threshold_cv );
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Anybody Listening?}
+
+	If a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.
+
+	This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this.
+
+	That's usually an error, but it might be acceptable.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Can We Apply This To What We Know?}
+
+	The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already.
+
+	What patterns could be replaced?
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Broadcast Barrier}
+
+	Consider the barrier pattern from earlier.
+
+	There are $n$ threads and we wait for the last one to arrive.
+		{\scriptsize
+			\begin{multicols}{2}
+				\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count == n
+	4.     post( barrier )
+	5. end if
+	6. post( mutex )
+	7. wait( barrier )
+	8. post( barrier )
+  \end{verbatim}
+				\columnbreak
+				\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count < n
+	4.     cond_wait( barrier, mutex )
+	5. else
+	6.     cond_broadcast( barrier )
+	7. end if
+	8. post( mutex )
+  \end{verbatim}
+			\end{multicols}
+		}
+
+	The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it?
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Spidey Sense Tingling?}
+
+
+	We give up the mutex \texttt{lock} when we wait on the condition variable.
+
+	The fact that we don't get to the unlock statement first does not cause a problem.
+
+	So we are alright.
+
+	The last thread doesn't wait on the condition at all because there's no need to!
+
+	It knows that it is last and there's nothing to wait for so it should proceed.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Barrier Pattern Code Example}
+	\begin{lstlisting}[language=C]
+int count;
+pthread_mutex_t lock;
+pthread_cond_t cv;
+
+void barrier( ) {
+  pthread_mutex_lock( &lock );
+  count++;
+  if ( count < NUM_THREADS ) {
+    pthread_cond_wait( &cv, &lock );
+  } else {
+    pthread_cond_broadcast( &cv );
+  }
+  pthread_mutex_unlock( &lock );
+}
+\end{lstlisting}
+
+	Will this work?
+
+\end{frame}
+
+\end{document}
