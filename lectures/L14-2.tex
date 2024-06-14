@@ -145,7 +145,7 @@ For example, Java User Manual reads:
 	This has little practical impact on most application programs as a Condition should always be waited upon in a loop, testing the state predicate that is being waited for.
 \end{displayquote}
 
-The CV with broadcast can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads, and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the CV on the right:
+The CV can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads, and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the CV on the right:
 
 \begin{multicols}{2}
 	\begin{verbatim}

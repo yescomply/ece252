@@ -143,13 +143,11 @@ pthread_mutex_destroy( pthread_mutex_t *mutex )
 \begin{frame}
 	\frametitle{Condition Variables}
 
-	How do we know if some condition has been fulfilled?
+	Conceptually, a CV is a queue on which a thread may wait inside a critical section for a condition to become true.
 
-	Signal on a semaphore?
+	While a thread is waiting on a CV, other threads may enter the critical section to modify the shared data.
 
-	Lock mutex, read variable(s), unlock mutex?
-
-	Or: a Condition Variable.
+	These other threads can then signal the CV to indicate that the condition has become true after the changes have been made.
 
 \end{frame}
 
@@ -157,142 +155,170 @@ pthread_mutex_destroy( pthread_mutex_t *mutex )
 \begin{frame}
 	\frametitle{Condition Variable}
 
-	We can think of condition variables as ``events'' that occur.
+	Consider a monitor with mutex \texttt{m} and a CV \texttt{c}.
 
-	What differentiates it: broadcast!
+	There are three main operations on \texttt{c}:
 
-	We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Condition Variable Syntax}
-
-	\begin{lstlisting}[language=C]
-pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
-pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
-pthread_cond_signal( pthread_cond_t *cv );
-pthread_cond_broadcast( pthread_cond_t *cv );
-pthread_cond_destroy( pthread_cond_t *cv );
-\end{lstlisting}
-
-	As with other pthread functions we've seen there are create and destroy calls.
-
-	Signal is self-explanatory; but broadcast is new and wait looks weird!
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Wait, in Two Parts}
-
-	Condition variables are always used in conjunction with a mutex.
-
-	\texttt{pthread\_cond\_wait} takes the condition variable and a mutex.
-
-	This routine should be called only while the mutex is locked.
-
-	It will automatically release the mutex while it waits for the condition!
-
-	When the condition is true, then the mutex will be automatically locked again so the thread may proceed.
-
-	Then, manually unlock when finished.
+	\begin{itemize}
+		\item \texttt{cond\_wait( c, m )}
+		\item \texttt{cond\_signal( c )}
+		\item \texttt{cond\_broadcast( c )}
+	\end{itemize}
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{HEY GUYS!!! GUESS WHAT!!!}
+	\frametitle{CV: Wait}
+
+	\texttt{cond\_wait} takes the following steps.
+
+	Step (1): \emph{atomically}:
+	\begin{enumerate}
+		\item unlock the mutex \texttt{m};
+    	\item put the calling thread on \texttt{c}'s wait queue; and
+    	\item block the calling thread (i.e., make it sleep) and yield the processor to another thread.
+	\end{enumerate}
+
+	Step (2): Once a waiting thread is subsequently notified/signaled (see below) and resumed, it will automatically try to re-lock the mutex \texttt{m}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Step (1)}
+
+	The atomicity of operations within Step (1) is crucial.
+
+	One failure mode that could occur if these operations were not atomic is a \alert{missed wakeup}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{CV: Signal}
+
+	\texttt{cond\_signal} is called by a thread to indicate that a condition associated with \texttt{c} has become true.
+
+	A thread that calls \texttt{cond\_signal} should do so while it is still inside the critical section, before unlocking the mutex \texttt{m}.
+
+	If there are waiting threads on \texttt{c}'s wait queue, then \texttt{cond\_signal} will move one of them to the ready queue.
+
+	If there are no waiting threads, then the signal is ignored.
+
+	In other words, unlike semaphores, CVs are \emph{memory-less}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{CV: Broadcast}
+
 	\begin{center}
 		\includegraphics[width=0.6\textwidth]{images/newsanchor.jpg}
+
+		{HEY GUYS!!! GUESS WHAT!!!}
 	\end{center}
 
-	\texttt{pthread\_cond\_broadcast} signals all threads waiting on that condition variable.
-
-	It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
+	\texttt{cond\_broadcast} is similar to \texttt{cond\_signal} but wakes up all waiting threads in \texttt{c}'s wait queue if there are any.
 
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Condition Variable Example}
+	\frametitle{What Should I Do With This?}
 
-	\begin{lstlisting}[language=C]
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
+	\textbf{Waiting Thread}
+	\begin{verbatim}
+	lock( m )
+	/* critical section */
+	while( !is_condition_true() ) {
+	    cond_wait( m, c)
+	}
+	/* rest of critical section */
+	unlock( m )
+	\end{verbatim}
 
-#define NUM_THREADS  3
-#define COUNT_LIMIT 12
+	\vspace{2em}
 
-int count = 0;
-pthread_mutex_t count_mutex;
-pthread_cond_t count_threshold_cv;
+	\textbf{Signaling Thread}
+	\begin{verbatim}
+	lock( m )
+	/* critical section */
+	/* if is_condition_true() is now true */
+	cond_signal( c )
+	/* rest of critical section */
+	unlock( m )
+	\end{verbatim}
 
-void* inc_count( void* arg ) {
-  for (int i = 0; i < 10; i++ ) {
-    pthread_mutex_lock( &count_mutex );
-    count++;
-    if ( count == COUNT_LIMIT ) {
-      printf( "Condition Fulfilled!\n" );
-      pthread_cond_signal( &count_threshold_cv );
-      printf( "Sent signal.\n" );
-    }
-    pthread_mutex_unlock( &count_mutex );
-  }
-  pthread_exit( NULL );
-}
-\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Condition Variable Example}
+	\frametitle{Why Should We Loop?}
 
-	\begin{lstlisting}[language=C]
-void* watch_count( void *arg ) {
-  pthread_mutex_lock( &count_mutex );
-  if ( count < COUNT_LIMIT ) {
-    pthread_cond_wait( &count_threshold_cv, &count_mutex );
-    printf( "Watcher has woken up.\n" );
-    /* Do something useful here now that condition is fulfilled. */
-  }
-  pthread_mutex_unlock( &count_mutex );
-  pthread_exit( NULL );
-}
-\end{lstlisting}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/looper.jpg}
+	\end{center}
+
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Condition Variable Example}
-	\begin{lstlisting}[language=C]
-int main( int argc, char **argv ) {
-  pthread_t threads[3];
+	\frametitle{Ice Cream}
 
-  pthread_mutex_init( &count_mutex, NULL );
-  pthread_cond_init ( &count_threshold_cv, NULL );
+	Suppose that thread A locks the mutex and enters the critical section.
 
-  pthread_create( &threads[0], NULL, watch_count, NULL );
-  pthread_create( &threads[1], NULL, inc_count, NULL );
-  pthread_create( &threads[2], NULL, inc_count, NULL );
+	It then checks if there is ice cream in the freezer and calls \texttt{cond\_wait} because there is none.
 
-  for ( int i = 0; i < NUM_THREADS; i++ ) {
-    pthread_join(threads[i], NULL);
-  }
+	Inside \texttt{cond\_wait}, the mutex is unlocked before thread A is put to sleep.
 
-  pthread_mutex_destroy( &count_mutex );
-  pthread_cond_destroy( &count_threshold_cv );
-  pthread_exit( NULL );
-}
-\end{lstlisting}
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Ice Cream}
 
-\begin{frame}
-	\frametitle{Anybody Listening?}
+	Next, thread B arrives, locks the mutex, and enters the critical section.
 
-	If a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.
+	Thread B buys ice cream and puts it in the freezer.
 
-	This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this.
+	Subsequently, thread B signals the condition variable.
 
-	That's usually an error, but it might be acceptable.
+	Since thread A is the only waiting thread, it wakes up and moves to the ready queue.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Ice Cream}
+
+	Thread B continues to run and eventually exits the critical section.
+
+	Before thread B finishes its execution, thread C arrives and is put in the ready queue alongside thread A.
+
+	Thread B finishes its execution, and the OS picks thread C as the next thread to run.
+
+	Thread C locks the mutex, enters the critical section, and eats the ice cream.
+
+	Thread C then finishes up and exits the critical section.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Ice Cream}
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/icecream}
+	\end{center}
+
+	When A runs, there is no ice cream in the freezer.
+
+	Therefore, thread A must check the condition and call \texttt{cond\_wait} again.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{That's Not All!}
+
+	Java User Manual:
+
+	\vspace{1em}
+	\begin{displayquote}
+		When waiting upon a Condition, a spurious wakeup is permitted to occur, in general, as a concession to the underlying platform semantics.
+		This has little practical impact on most application programs as a Condition should always be waited upon in a loop, testing the state predicate that is being waited for.
+	\end{displayquote}
 
 \end{frame}
 
@@ -310,7 +336,7 @@ int main( int argc, char **argv ) {
 
 	Consider the barrier pattern from earlier.
 
-	There are $n$ threads and we wait for the last one to arrive.
+	There are $n$ threads, and we wait for the last one to arrive.
 		{\scriptsize
 			\begin{multicols}{2}
 				\begin{verbatim}
@@ -322,22 +348,22 @@ int main( int argc, char **argv ) {
 	6. post( mutex )
 	7. wait( barrier )
 	8. post( barrier )
-  \end{verbatim}
+  				\end{verbatim}
 				\columnbreak
 				\begin{verbatim}
-	1. wait( mutex )
+	1. lock( mutex )
 	2. count++
-	3. if count < n
-	4.     cond_wait( barrier, mutex )
-	5. else
-	6.     cond_broadcast( barrier )
+	3. if count == n
+	4.     cond_broadcast( barrier )
+	5. else while count < n
+	6.     cond_wait( barrier, mutex )
 	7. end if
-	8. post( mutex )
-  \end{verbatim}
+	8. unlock( mutex )
+  				\end{verbatim}
 			\end{multicols}
 		}
 
-	The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it?
+	The \texttt{cond\_wait} takes place before \texttt{unlock( mutex )}. That looks strange, doesn't it?
 
 \end{frame}
 
@@ -358,6 +384,22 @@ int main( int argc, char **argv ) {
 
 \end{frame}
 
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Syntax}
+
+	\begin{lstlisting}[language=C]
+pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
+pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
+pthread_cond_signal( pthread_cond_t *cv );
+pthread_cond_broadcast( pthread_cond_t *cv );
+pthread_cond_destroy( pthread_cond_t *cv );
+\end{lstlisting}
+
+	As with other pthread functions we've seen there are create and destroy calls.
+
+\end{frame}
+
 \begin{frame}[fragile]
 	\frametitle{Barrier Pattern Code Example}
 	\begin{lstlisting}[language=C]
@@ -368,10 +410,12 @@ pthread_cond_t cv;
 void barrier( ) {
   pthread_mutex_lock( &lock );
   count++;
-  if ( count < NUM_THREADS ) {
-    pthread_cond_wait( &cv, &lock );
-  } else {
+  if ( count == NUM_THREADS ) {
     pthread_cond_broadcast( &cv );
+  } else {
+    while ( count < NUM_THREADS ) {
+      pthread_cond_wait( &cv, &lock );
+    }
   }
   pthread_mutex_unlock( &lock );
 }
