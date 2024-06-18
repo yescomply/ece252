@@ -9,9 +9,10 @@
 int buffer[BUFFER_SIZE];
 int pindex = 0;
 int cindex = 0;
-sem_t spaces;
-sem_t items;
+int count = 0;
 pthread_mutex_t mutex;
+pthread_cond_t empty_cv;
+pthread_cond_t full_cv;
 
 int produce( int id ) {
     int r = rand();
@@ -27,12 +28,15 @@ void* producer( void* arg ) {
     int* id = (int*) arg;
     for(int i = 0; i < 10000; ++i) {
         int num = produce(*id); 
-        sem_wait( &spaces );
         pthread_mutex_lock( &mutex );
+        while( count == BUFFER_SIZE) {
+            pthread_cond_wait( &full_cv, &mutex );
+        }
+        count++;
         buffer[pindex] = num;
         pindex = (pindex + 1) % BUFFER_SIZE;
+        pthread_cond_signal( &empty_cv );
         pthread_mutex_unlock( &mutex );
-        sem_post( &items );
     }
     free( arg );
     pthread_exit( NULL );
@@ -41,13 +45,16 @@ void* producer( void* arg ) {
 void* consumer( void* arg ) {
     int* id = (int*) arg;
     for(int i = 0; i < 10000; ++i) {
-        sem_wait( &items );
         pthread_mutex_lock( &mutex );
+        while( count == 0) {
+            pthread_cond_wait( &empty_cv, &mutex );
+        }
+        count--;
         int num = buffer[cindex];
         buffer[cindex] = -1;
         cindex = (cindex + 1) % BUFFER_SIZE;
+        pthread_cond_signal( &full_cv );
         pthread_mutex_unlock( &mutex );
-        sem_post( &spaces );
         consume( *id, num );
     }
     free( id );
@@ -55,9 +62,9 @@ void* consumer( void* arg ) {
 }
 
 int main( int argc, char** argv ) {
-    sem_init( &spaces, 0, BUFFER_SIZE );
-    sem_init( &items, 0, 0 );  
     pthread_mutex_init( &mutex, NULL );
+    pthread_cond_init ( &full_cv, NULL );
+    pthread_cond_init ( &empty_cv, NULL );
 
     pthread_t threads[20];
 
@@ -74,8 +81,8 @@ int main( int argc, char** argv ) {
     for( int k = 0; k < 20; k++ ){  
         pthread_join(threads[k], NULL);
     }
-    sem_destroy( &spaces );
-    sem_destroy( &items );
     pthread_mutex_destroy( &mutex );
+    pthread_cond_destroy( &full_cv );
+    pthread_cond_destroy( &empty_cv );
     pthread_exit(0);
 }
