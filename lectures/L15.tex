@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 15 --- The Producer-Consumer Problem }{\term}{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi}
+\lecture{ 15 --- The Producer-Consumer Problem }{\term}{By Jeff Zarnett and Seyed Majid Zahedi}
 
 \section*{Classical Synchronization Problems: Producer-Consumer}
 
@@ -22,13 +22,13 @@ If busy-waiting is permitted, that is, we do not care if we are wasting CPU time
 	 1. [produce item]
 	 2. added = false
 	 3. while added is false
-	 4.    wait( mutex )
+	 4.    lock( mutex )
 	 5.    if count < BUFFER_SIZE
 	 6.        [add item to buffer]
 	 7.        count++
 	 8.        added = true
 	 9.    end if
-	10.    post( mutex )
+	10.    unlock( mutex )
 	11. end while
   \end{verbatim}
 	\columnbreak
@@ -36,19 +36,21 @@ If busy-waiting is permitted, that is, we do not care if we are wasting CPU time
 	\begin{verbatim}
 	 1. removed = false
 	 2. while removed is false
-	 3.    wait( mutex )
+	 3.    lock( mutex )
 	 4.    if count > 0
 	 5.        [remove item from buffer]
 	 6.        count--
 	 7.        removed = true
 	 8.    end if
-	 9.    post( mutex )
+	 9.    unlock( mutex )
 	10. end while
 	11. [consume item]
   \end{verbatim}
 \end{multicols}
 \vspace{-2em}
 
+
+\subsection*{PC with Semaphores}
 
 While this accomplishes what we want, it is inefficient. Let's add a new rule that says we want to avoid busy-waiting. Thus, when the producer is waiting for space it will be blocked and just as the consumer will be when the consumer is waiting for an element. To accomplish this, we will need two general semaphores, each with maximum value of \texttt{BUFFER\_SIZE}. The first is called \texttt{items}: it starts at 0 and represents how many spaces in the buffer are full. The second is the mirror image \texttt{spaces}; it starts at \texttt{BUFFER\_SIZE} and represents the number of spaces in the buffer that are currently empty.
 
@@ -131,83 +133,7 @@ If the above pseudocode were implemented it is not a certainty that there will b
 
 But let's get to doing an actual example! We will take some time to analyze this solution and understand how we got from the psuedocode above to the actual code below.
 
-\subsection*{Producer-Consumer Example}
-
-\begin{lstlisting}[language=C]
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <semaphore.h>
-
-#define BUFFER_SIZE 20
-sem_t spaces;
-sem_t items;
-int counter = 0;
-int* buffer;
-
-int produce() {
-  ++counter;
-  return counter;
-} 
-
-void consume( int value ) {
-  printf("Consumed %d.\n", value);
-}
-
-void* producer( void* arg ) {
-  int pindex = 0;
-  while( counter < 10000 ) {
-    int v = produce();
-    sem_wait( &spaces );
-    buffer[pindex] = v;
-    pindex = (pindex + 1) % BUFFER_SIZE;
-    sem_post( &items );
-  }
-  pthread_exit( NULL );
-}
-
-void* consumer( void* arg ) {
-  int cindex = 0;
-  int ctotal = 0;
-  while( ctotal < 10000 ) {
-    sem_wait( &items );
-    int temp = buffer[cindex];
-    buffer[cindex] = -1;
-    cindex = (cindex + 1) % BUFFER_SIZE;
-    sem_post( &spaces );
-    consume( temp );
-    ++ctotal;
-  }
-  pthread_exit( NULL );
-}
-
-int main( int argc, char** argv ) {
-  buffer = malloc( BUFFER_SIZE * sizeof( int ) );
-  for ( int i = 0; i < BUFFER_SIZE; i++ ) {
-    buffer[i] = -1;
-  }  
-  sem_init( &spaces, 0, BUFFER_SIZE );
-  sem_init( &items, 0, 0 );
-
-  pthread_t prod;
-  pthread_t con;
-
-  pthread_create( &prod, NULL, producer, NULL );
-  pthread_create( &con, NULL, consumer, NULL );
-  pthread_join( prod, NULL );
-  pthread_join( con, NULL );
-
-  free( buffer );
-  sem_destroy( &spaces );
-  sem_destroy( &items );
-  pthread_exit( 0 );
-}
-\end{lstlisting}
-
-
-\subsection*{Parallelizing the Producer-Consumer Solution}
-Now suppose that we wanted to have ten producers and ten consumers. How do we get there from here?
+\subsection*{Code Example for PC with Semaphore}
 
 \begin{lstlisting}[language=C]
 #include <stdlib.h>
@@ -222,7 +148,7 @@ int pindex = 0;
 int cindex = 0;
 sem_t spaces;
 sem_t items;
-pthread_mutex_t mutex;
+sem_t mutex;
 
 int produce( int id ) {
   int r = rand();
@@ -239,10 +165,10 @@ void* producer( void* arg ) {
   for(int i = 0; i < 10000; ++i) {
     int num = produce(*id); 
     sem_wait( &spaces );
-    pthread_mutex_lock( &mutex );
+    sem_wait( &mutex );
     buffer[pindex] = num;
     pindex = (pindex + 1) % BUFFER_SIZE;
-    pthread_mutex_unlock( &mutex );
+    sem_post( &mutex );
     sem_post( &items );
   }
   free( arg );
@@ -253,11 +179,11 @@ void* consumer( void* arg ) {
   int* id = (int*) arg;
   for(int i = 0; i < 10000; ++i) {
     sem_wait( &items );
-    pthread_mutex_lock( &mutex );
+    sem_wait( &mutex );
     int num = buffer[cindex];
     buffer[cindex] = -1;
     cindex = (cindex + 1) % BUFFER_SIZE;
-    pthread_mutex_unlock( &mutex );
+    sem_post( &mutex );
     sem_post( &spaces );
     consume( *id, num );
   }
@@ -268,7 +194,7 @@ void* consumer( void* arg ) {
 int main( int argc, char** argv ) {
   sem_init( &spaces, 0, BUFFER_SIZE );
   sem_init( &items, 0, 0 );  
-  pthread_mutex_init( &mutex, NULL );
+  sem_init( &mutex, 0, 1 );
 
   pthread_t threads[20];
 
@@ -287,8 +213,324 @@ int main( int argc, char** argv ) {
   }
   sem_destroy( &spaces );
   sem_destroy( &items );
-  pthread_mutex_destroy( &mutex );
+  sem_destroy( &mutex );
   pthread_exit( 0 );
+}
+\end{lstlisting}
+
+
+\subsection*{PC with Monitor}
+
+We next look into the implementation of the producer and consumer threads using a monitor.
+For this purpose, we need a single mutex and two condition variables: \texttt{full} and \texttt{empty}.
+\texttt{full} will be used for producers to wait when the buffer is full, and \texttt{empty} will be used for consumers to wait when the buffer is empty:
+
+\begin{multicols}{2}
+    \small
+    \textbf{Producer}
+    \begin{verbatim}
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. while count == BUFFER_SIZE
+ 4.    cond_wait( full, mutex )
+ 5. [add item to buffer]
+ 6. count++
+ 7. cond_signal( empty )
+ 8. unlock( mutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Consumer}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. while count == 0
+ 3.    cond_wait( empty, mutex )
+ 4. [remove item from buffer]
+ 5. count--
+ 6. cond_signal( full )
+ 7. unlock( mutex )
+ 8. [consume item]
+    \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+This works fine, but it has a subtle fairness issue.
+To see the problem, remember the ice cream example from the previous lecture (Lecture 14-2).
+Consider a producer thread A that is waiting on the \texttt{full} CV.
+Suppose that a consumer thread B arrives, consumes an item, and signals \texttt{full}.
+At this point, another producer thread C arrives and goes to the ready queue.
+The consumer thread B exits.
+The OS schedules C, which produces an item and makes the buffer full again.
+The producer thread A runs next and has to wait again.
+This could continue infinitely many times, starving thread A.
+
+To address this fairness issue, our solution involves a \emph{take-a-number} approach.
+In this approach, before accessing the buffer, each incoming thread takes a number.
+They then check the \emph{now-serving} display to see if it's their turn.
+If not, they wait for their turn.
+
+To implement this solution, we introduce \texttt{p\_turn} and \texttt{c\_turn} variables to track turns for producers and consumers, respectively.
+We also introduce \texttt{next\_p\_turn} and \texttt{next\_c\_turn} variables to indicate the \emph{now-serving} number for producers and consumers, respectively.
+
+\newpage
+
+\begin{multicols}{2}
+    \small
+    \textbf{Producer}
+    \begin{verbatim}
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. my_turn = p_turn++
+ 4. while count == BUFFER_SIZE ||
+ 5.       next_p_turn < my_turn
+ 6.    cond_wait( full, mutex )
+ 7. [add item to buffer]
+ 8. count++
+ 9. next_p_turn++
+10. cond_signal( empty )
+11. unlock( mutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Consumer}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. my_turn = c_turn++
+ 3. while count == 0 ||
+ 4.       next_c_turn < my_turn
+ 5.    cond_wait( empty, mutex )
+ 6. [remove item from buffer]
+ 7. count--
+ 8. next_c_turn++
+ 9. cond_signal( full )
+10. unlock( mutex )
+11. [consume item]
+    \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+This first attempt is a step in the right direction, but it has a problem.
+In particular, a signal could be delivered to a `wrong' thread—a thread whose turn has not yet come—who will wake up, check the conditions, and go to sleep again, wasting the signal.
+When there is equal number of \texttt{cond\_wait} and \texttt{cond\_signal}, each wasted signal directly translates to a waiting thread that never wakes up!
+To solve this issue, we could replace \texttt{cond\_signal} with \texttt{cond\_broadcast}:
+
+\begin{multicols}{2}
+    \small
+    \textbf{Producer}
+    \begin{verbatim}
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. my_turn = p_turn++
+ 4. while count == BUFFER_SIZE ||
+ 5.       next_p_turn < my_turn
+ 6.    cond_wait( full, mutex )
+ 7. [add item to buffer]
+ 8. count++
+ 9. next_p_turn++
+10. cond_broadcast( empty )
+11. unlock( mutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Consumer}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. my_turn = c_turn++
+ 3. while count == 0 ||
+ 4.       next_c_turn < my_turn
+ 5.    cond_wait( empty, mutex )
+ 6. [remove item from buffer]
+ 7. count--
+ 8. next_c_turn++
+ 9. cond_broadcast( full )
+10. unlock( mutex )
+11. [consume item]
+    \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+This solution works.
+However, it is very inefficient in the sense that we wake everyone up, even though only one of them is allowed to proceed.
+
+To properly solve the fairness issue and avoid inefficiency, threads need to send their signal to the `right' waiting thread.
+We can achieve this by manually creating a FIFO list of waiting threads.
+Each thread will have their own CV to wait on.
+Once a thread is done, they signal exactly the next thread in the line:
+
+
+\begin{multicols}{2}
+    \small
+    \textbf{Producer}
+    \begin{verbatim}
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. my_turn = p_turn++
+ 4. fifo_push( p_fifo, my_full)
+ 5. while count == BUFFER_SIZE ||
+ 6.       next_p_turn < my_turn
+ 7.    cond_wait( my_full, mutex )
+ 8. [add item to buffer]
+ 9. count++
+10. next_p_turn++
+11. fifo_pop( p_fifo )
+12. if !fifo_is_empty( c_fifo )
+13.    cond_signal(fifo_head(c_fifo))
+14. unlock( mutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Consumer}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. my_turn = c_turn++
+ 3. fifo_push( c_fifo, my_empty )
+ 4. while count == 0 ||
+ 5.       next_c_turn < my_turn
+ 6.    cond_wait( my_empty, mutex )
+ 7. [remove item from buffer]
+ 8. count--
+ 9. next_c_turn++
+10. fifo_pop( c_fifo )
+11. if !fifo_is_empty( p_fifo )
+12.    cond_signal(fifo_head(p_fifo))
+13. unlock( mutex )
+14. [consume item]
+    \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+\subsection*{Code Example for PC with Monitor}
+
+\begin{lstlisting}[language=C]
+#include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <math.h>
+#include "fifo.h"
+
+#define BUFFER_SIZE 100
+#define NUM_PRODUCERS 10
+#define NUM_CONSUMERS 10
+
+int buffer[BUFFER_SIZE];
+int p_index = 0;
+int c_index = 0;
+int count = 0;
+
+int p_turn = 0;
+int c_turn = 0;
+int next_p_turn = 0;
+int next_c_turn = 0;
+
+pthread_mutex_t mutex;
+pthread_cond_t full_cv[NUM_PRODUCERS];
+pthread_cond_t empty_cv[NUM_CONSUMERS];
+
+fifo_t p_fifo;
+fifo_t c_fifo;
+
+int produce( int id ) {
+  int r = rand();
+  printf("Producer %d produced %d.\n", id, r);
+  return r;
+}
+
+void consume( int id, int number ) {
+  printf("Consumer %d consumed %d.\n", id, number);
+}
+
+void* producer( void* arg ) {
+  int* id = (int*) arg;
+  for(int i = 0; i < 10000; i++) {
+    int num = produce(*id);
+    pthread_mutex_lock(&mutex);
+    int my_turn = p_turn++;
+    fifo_push(&p_fifo, &full_cv[*id]);
+    while(count == BUFFER_SIZE || next_p_turn < my_turn) {
+      pthread_cond_wait( &full_cv[*id], &mutex );
+    }
+    buffer[p_index] = num;
+    p_index = (p_index + 1) % BUFFER_SIZE;
+    count++;
+    fifo_pop(&p_fifo);
+    next_p_turn++;
+    pthread_cond_t *c_fifo_head = (pthread_cond_t*) fifo_head(&c_fifo);
+    if(c_fifo_head != NULL) {
+      pthread_cond_signal(c_fifo_head);
+    }
+    pthread_mutex_unlock( &mutex );
+  }
+  free( arg );
+  pthread_exit( NULL );
+}
+
+void* consumer( void* arg ) {
+  int* id = (int*) arg;
+  for(int i = 0; i < 10000; i++) {
+    pthread_mutex_lock( &mutex );
+    int my_turn = c_turn++;
+    fifo_push(&c_fifo, &empty_cv[*id]);
+    while(count == 0 || next_c_turn < my_turn) {
+      pthread_cond_wait( &empty_cv[*id], &mutex );
+    }
+    int num = buffer[c_index];
+    buffer[c_index] = -1;
+    c_index = (c_index + 1) % BUFFER_SIZE;
+    count--;
+    fifo_pop(&c_fifo);
+    next_c_turn++;
+    pthread_cond_t *p_fifo_head = (pthread_cond_t*) fifo_head(&p_fifo);
+    if(p_fifo_head != NULL) {
+      pthread_cond_signal(p_fifo_head);
+    }
+    pthread_mutex_unlock( &mutex );
+    consume( *id, num );
+  }
+  free( id );
+  pthread_exit( NULL );
+}
+
+int main( int argc, char** argv ) {
+  pthread_mutex_init( &mutex, NULL );
+
+  for( int i = 0; i < NUM_PRODUCERS; i++ ) {
+    pthread_cond_init ( &full_cv[i], NULL );
+  }
+  for( int i = 0; i < NUM_CONSUMERS; i++ ) {
+    pthread_cond_init ( &empty_cv[i], NULL );
+  }
+
+  fifo_init(&p_fifo, NUM_PRODUCERS);
+  fifo_init(&c_fifo, NUM_CONSUMERS);
+
+  pthread_t threads[NUM_PRODUCERS + NUM_CONSUMERS];
+
+  for( int i = 0; i < NUM_PRODUCERS; i++ ) {
+    int* id = malloc(sizeof(int));
+    *id = i;
+    pthread_create(&threads[i], NULL, producer, id);
+  }
+
+  for( int i = 0; i < NUM_CONSUMERS; i++ ) {
+    int* id = malloc(sizeof(int));
+    *id = i;
+    pthread_create(&threads[i + NUM_PRODUCERS], NULL, consumer, id);
+  }
+
+  for( int i = 0; i < NUM_PRODUCERS + NUM_CONSUMERS; i++ ){
+    pthread_join(threads[i], NULL);
+  }
+
+  pthread_mutex_destroy( &mutex );
+
+  for( int i = 0; i < NUM_CONSUMERS; i++ ) {
+    pthread_cond_destroy(&full_cv[i]);
+  }
+
+  for( int i = 0; i < NUM_CONSUMERS; i++ ) {
+    pthread_cond_destroy(&empty_cv[i]);
+  }
+
+  fifo_destroy(&p_fifo);
+  fifo_destroy(&c_fifo);
+
+  pthread_exit(0);
 }
 \end{lstlisting}
 

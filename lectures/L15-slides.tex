@@ -2,7 +2,7 @@
 
 \title{Lecture 15 --- The Producer-Consumer Problem }
 
-\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
+\author{By Jeff Zarnett and Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
 \date{}
@@ -73,30 +73,30 @@
 	 1. [produce item]
 	 2. added = false
 	 3. while added is false
-	 4.    wait( mutex )
+	 4.    lock( mutex )
 	 5.    if count < BUFFER_SIZE
 	 6.        [add item to buffer]
 	 7.        count++
 	 8.        added = true
 	 9.    end if
-	10.    post( mutex )
+	10.    unlock( mutex )
 	11. end while
-  \end{verbatim}
+  				\end{verbatim}
 				\columnbreak
-				\textbf{Consumer}
+				\textbf{Consumer}\vspace{-2em}
 				\begin{verbatim}
 	 1. removed = false
 	 2. while removed is false
-	 3.    wait( mutex )
+	 3.    lock( mutex )
 	 4.    if count > 0
 	 5.        [remove item from buffer]
 	 6.        count--
 	 7.        removed = true
 	 8.    end if
-	 9.    post( mutex )
+	 9.    unlock( mutex )
 	10. end while
 	11. [consume item]
-  \end{verbatim}
+  				\end{verbatim}
 			\end{multicols}
 			\vspace{-2em}
 		}
@@ -150,15 +150,15 @@
 	 2. wait( spaces )
 	 3. [add item to buffer]
 	 4. post( items )
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Consumer}
+		\textbf{Consumer}\vspace{-2em}
 		\begin{verbatim}
 	 1. wait( items )
 	 2. [remove item from buffer]
 	 3. post( spaces )
 	 4. [consume item]
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -195,9 +195,9 @@
 	 4. [add item to buffer]
 	 5. post( mutex )
 	 6. post( items )
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Consumer}
+		\textbf{Consumer}\vspace{-2em}
 		\begin{verbatim}
 	 1. wait( items )
 	 2. wait( mutex )
@@ -205,7 +205,7 @@
 	 4. post( mutex )
 	 5. post( spaces )
 	 6. [consume item]
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -239,9 +239,9 @@
 	 4. [add item to buffer]
 	 5. post( items )
 	 6. post( mutex )
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Consumer}
+		\textbf{Consumer}\vspace{-2em}
 		\begin{verbatim}
 	 1. wait( mutex )
 	 2. wait( items )
@@ -249,7 +249,7 @@
 	 4. post( spaces )
 	 5. post( mutex )
 	 6. [consume item]
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -284,107 +284,6 @@
 
 \end{frame}
 
-
-\begin{frame}[fragile]
-	\frametitle{P-C Example}
-
-	\begin{lstlisting}[language=C]
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <semaphore.h>
-
-#define BUFFER_SIZE 20
-sem_t spaces;
-sem_t items;
-int counter = 0;
-int* buffer;
-
-int produce() {
-  ++counter;
-  return counter;
-} 
-
-void consume( int value ) {
-  printf("Consumed %d.\n", value);
-}
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{P-C Example}
-
-	\begin{lstlisting}[language=C]
-void* producer( void* arg ) {
-  int pindex = 0;
-  while( counter < 10000 ) {
-    int v = produce();
-    sem_wait( &spaces );
-    buffer[pindex] = v;
-    pindex = (pindex + 1) % BUFFER_SIZE;
-    sem_post( &items );
-  }
-  pthread_exit( NULL );
-}
-
-void* consumer( void* arg ) {
-  int cindex = 0;
-  int ctotal = 0;
-  while( ctotal < 10000 ) {
-    sem_wait( &items );
-    int temp = buffer[cindex];
-    buffer[cindex] = -1;
-    cindex = (cindex + 1) % BUFFER_SIZE;
-    sem_post( &spaces );
-    consume( temp );
-    ++ctotal;
-  }
-  pthread_exit( NULL );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{P-C Example}
-
-	\begin{lstlisting}[language=C]
-int main( int argc, char** argv ) {
-  buffer = malloc( BUFFER_SIZE * sizeof( int ) );
-  for ( int i = 0; i < BUFFER_SIZE; i++ ) {
-    buffer[i] = -1;
-  }  
-  sem_init( &spaces, 0, BUFFER_SIZE );
-  sem_init( &items, 0, 0 );
-
-  pthread_t prod;
-  pthread_t con;
-
-  pthread_create( &prod, NULL, producer, NULL );
-  pthread_create( &con, NULL, consumer, NULL );
-  pthread_join( prod, NULL );
-  pthread_join( con, NULL );
-
-  free( buffer );
-  sem_destroy( &spaces );
-  sem_destroy( &items );
-  pthread_exit( 0 );
-}
-
-\end{lstlisting}
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Before We Go On}
-
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/stop-hammertime.jpg}
-	\end{center}
-
-\end{frame}
-
 \begin{frame}[fragile]
 	\frametitle{Multiple Producer-Consumer Example}
 	\begin{lstlisting}[language=C]
@@ -400,7 +299,7 @@ int pindex = 0;
 int cindex = 0;
 sem_t spaces;
 sem_t items;
-pthread_mutex_t mutex;
+sem_t mutex;
 
 int produce( int id ) {
   int r = rand();
@@ -411,7 +310,7 @@ int produce( int id ) {
 void consume( int id, int number ) {
   printf("Consumer %d consumed %d.\n", id, number);
 }
-\end{lstlisting}
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -422,16 +321,16 @@ void* producer( void* arg ) {
   for(int i = 0; i < 10000; ++i) {
     int num = produce(*id); 
     sem_wait( &spaces );
-    pthread_mutex_lock( &mutex );
+    sem_wait( &mutex );
     buffer[pindex] = num;
     pindex = (pindex + 1) % BUFFER_SIZE;
-    pthread_mutex_unlock( &mutex );
+    sem_post( &mutex );
     sem_post( &items );
   }
   free( arg );
   pthread_exit( NULL );
 }
-\end{lstlisting}
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -442,18 +341,18 @@ void* consumer( void* arg ) {
   int* id = (int*) arg;
   for(int i = 0; i < 10000; ++i) {
     sem_wait( &items );
-    pthread_mutex_lock( &mutex );
+    sem_wait( &mutex );
     int num = buffer[cindex];
     buffer[cindex] = -1;
     cindex = (cindex + 1) % BUFFER_SIZE;
-    pthread_mutex_unlock( &mutex );
+    sem_post( &mutex );
     sem_post( &spaces );
     consume( *id, num );
   }
   free( id );
   pthread_exit( NULL );
 }
-\end{lstlisting}
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -462,7 +361,7 @@ void* consumer( void* arg ) {
 int main( int argc, char** argv ) {
   sem_init( &spaces, 0, BUFFER_SIZE );
   sem_init( &items, 0, 0 );  
-  pthread_mutex_init( &mutex, NULL );
+  sem_init( &mutex, 0, 1 );
 
   pthread_t threads[20];
 
@@ -481,13 +380,236 @@ int main( int argc, char** argv ) {
   }
   sem_destroy( &spaces );
   sem_destroy( &items );
-  pthread_mutex_destroy( &mutex );
+  sem_destroy( &mutex );
   pthread_exit( 0 );
 }
-\end{lstlisting}
+	\end{lstlisting}
+\end{frame}
+
+\begin{frame}
+	\frametitle{PC with Monitor}
+
+	Use 1 mutex for mutual exclusion.
+
+	Use 2 CVs for waiting.
+
+	\texttt{full}: CV for producers to wait on when buffer is full.
+
+	\texttt{empty}: CV for consumers to wait on when buffer is empty.
 \end{frame}
 
 
+\begin{frame}[fragile]
+	\frametitle{Multi PC!}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. lock( mutex )
+	 3. while count == BUFFER_SIZE
+	 4.    cond_wait( full, mutex )
+	 5. [add item to buffer]
+	 6. count++
+	 7. cond_signal( empty )
+	 8. unlock( mutex )
+		\end{verbatim}
+		\columnbreak
+		\textbf{Consumer}\vspace{-2em}
+		\begin{verbatim}
+	 1. lock( mutex )
+	 2. while count == 0
+	 3.    cond_wait( empty, mutex )
+	 4. [remove item from buffer]
+	 5. count--
+	 6. cond_signal( full )
+	 7. unlock( mutex )
+	 8. [consume item]
+		\end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+	Does this work?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Where is My Ice Cream?}
+	There is a subtle fairness issue.
+
+	Consider a producer thread A that is waiting on the \texttt{full} CV.
+
+	Suppose that a consumer thread B arrives, consumes an item, and signals \texttt{full}.
+
+	At this point, another producer thread C arrives and goes to the ready queue.
+
+	The consumer thread B exits.
+	The OS schedules C, which produces an item and makes the buffer full again.
+
+	The producer thread A runs next and has to wait again.
+
+	This could continue infinitely many times, starving thread A.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Take A Number!}
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/now_serving}
+	\end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Is This Better?}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. lock( mutex )
+	 3. my_turn = p_turn++
+	 4. while count == BUFFER_SIZE ||
+	 5.       next_p_turn < my_turn
+	 6.    cond_wait( full, mutex )
+	 7. [add item to buffer]
+	 8. count++
+	 9. next_p_turn++
+	10. cond_signal( empty )
+	11. unlock( mutex )
+		\end{verbatim}
+		\columnbreak
+		\textbf{Consumer}\vspace{-2em}
+		\begin{verbatim}
+	 1. lock( mutex )
+	 2. my_turn = c_turn++
+	 3. while count == 0 ||
+	 4.       next_c_turn < my_turn
+	 5.    cond_wait( empty, mutex )
+	 6. [remove item from buffer]
+	 7. count--
+	 8. next_c_turn++
+	 9. cond_signal( full )
+	10. unlock( mutex )
+	11. [consume item]
+		\end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+	Does this work?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{IMMA GO SLEEP!}
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/sleepagain}
+	\end{center}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Is It Really My Turn?}
+	A signal could be delivered to a `wrong' thread—a thread whose turn has not yet come—who will wake up, check the conditions, and go to sleep again, wasting the signal.
+
+	When there is equal number of \texttt{cond\_wait} and \texttt{cond\_signal}, each wasted signal directly translates to a waiting thread that never wakes up!
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{How About This?}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. lock( mutex )
+	 3. my_turn = p_turn++
+	 4. while count == BUFFER_SIZE ||
+	 5.       next_p_turn < my_turn
+	 6.    cond_wait( full, mutex )
+	 7. [add item to buffer]
+	 8. count++
+	 9. next_p_turn++
+	10. cond_broadcast( empty )
+	11. unlock( mutex )
+		\end{verbatim}
+		\columnbreak
+		\textbf{Consumer}\vspace{-2em}
+		\begin{verbatim}
+	 1. lock( mutex )
+	 2. my_turn = c_turn++
+	 3. while count == 0 ||
+	 4.       next_c_turn < my_turn
+	 5.    cond_wait( empty, mutex )
+	 6. [remove item from buffer]
+	 7. count--
+	 8. next_c_turn++
+	 9. cond_broadcast( full )
+	10. unlock( mutex )
+	11. [consume item]
+		\end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+	Does this work?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{There Has To Be A Line!}
+
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/now_serving2}
+	\end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Are We There?}
+
+	\begin{multicols}{2}
+		\footnotesize
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. lock( mutex )
+	 3. my_turn = p_turn++
+	 4. fifo_push( p_fifo, my_full)
+	 5. while count == BUFFER_SIZE ||
+	 6.       next_p_turn < my_turn
+	 7.    cond_wait( my_full, mutex )
+	 8. [add item to buffer]
+	 9. count++
+	10. next_p_turn++
+	11. fifo_pop( p_fifo )
+	12. if !fifo_is_empty( c_fifo )
+	13.    cond_signal(fifo_head(c_fifo))
+	14. unlock( mutex )
+		\end{verbatim}
+		\columnbreak
+		\textbf{Consumer}\vspace{-2em}
+		\begin{verbatim}
+	 1. lock( mutex )
+	 2. my_turn = c_turn++
+	 3. fifo_push( c_fifo, my_empty )
+	 4. while count == 0 ||
+	 5.       next_c_turn < my_turn
+	 6.    cond_wait( my_empty, mutex )
+	 7. [remove item from buffer]
+	 8. count--
+	 9. next_c_turn++
+	10. fifo_pop( c_fifo )
+	11. if !fifo_is_empty( p_fifo )
+	12.    cond_signal(fifo_head(p_fifo))
+	13. unlock( mutex )
+	14. [consume item]
+		\end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+	Does this work?
+\end{frame}
 
 \end{document}
 
