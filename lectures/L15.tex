@@ -23,7 +23,7 @@ If busy-waiting is permitted, that is, we do not care if we are wasting CPU time
 	 2. added = false
 	 3. while added is false
 	 4.    lock( mutex )
-	 5.    if count < BUFFER_SIZE
+	 5.    if count < BUFF_SIZE
 	 6.        [add item to buffer]
 	 7.        count++
 	 8.        added = true
@@ -142,8 +142,8 @@ But let's get to doing an actual example! We will take some time to analyze this
 #include <math.h>
 #include <semaphore.h>
 
-#define BUFFER_SIZE 100
-int buffer[BUFFER_SIZE];
+#define BUFF_SIZE 100
+int buffer[BUFF_SIZE];
 int pindex = 0;
 int cindex = 0;
 sem_t spaces;
@@ -167,7 +167,7 @@ void* producer( void* arg ) {
     sem_wait( &spaces );
     sem_wait( &mutex );
     buffer[pindex] = num;
-    pindex = (pindex + 1) % BUFFER_SIZE;
+    pindex = (pindex + 1) % BUFF_SIZE;
     sem_post( &mutex );
     sem_post( &items );
   }
@@ -182,7 +182,7 @@ void* consumer( void* arg ) {
     sem_wait( &mutex );
     int num = buffer[cindex];
     buffer[cindex] = -1;
-    cindex = (cindex + 1) % BUFFER_SIZE;
+    cindex = (cindex + 1) % BUFF_SIZE;
     sem_post( &mutex );
     sem_post( &spaces );
     consume( *id, num );
@@ -192,7 +192,7 @@ void* consumer( void* arg ) {
 }
 
 int main( int argc, char** argv ) {
-  sem_init( &spaces, 0, BUFFER_SIZE );
+  sem_init( &spaces, 0, BUFF_SIZE );
   sem_init( &items, 0, 0 );  
   sem_init( &mutex, 0, 1 );
 
@@ -231,12 +231,13 @@ For this purpose, we need a single mutex and two condition variables: \texttt{fu
     \begin{verbatim}
  1. [produce item]
  2. lock( mutex )
- 3. while count == BUFFER_SIZE
+ 3. while count == BUFF_SIZE
  4.    cond_wait( full, mutex )
- 5. [add item to buffer]
- 6. count++
- 7. cond_signal( empty )
- 8. unlock( mutex )
+ 5. end while
+ 6. [add item to buffer]
+ 7. count++
+ 8. cond_signal( empty )
+ 9. unlock( mutex )
     \end{verbatim}
     \columnbreak
     \textbf{Consumer}\vspace{-2em}
@@ -244,17 +245,19 @@ For this purpose, we need a single mutex and two condition variables: \texttt{fu
  1. lock( mutex )
  2. while count == 0
  3.    cond_wait( empty, mutex )
- 4. [remove item from buffer]
- 5. count--
- 6. cond_signal( full )
- 7. unlock( mutex )
- 8. [consume item]
+ 4. end while
+ 5. [remove item from buffer]
+ 6. count--
+ 7. cond_signal( full )
+ 8. unlock( mutex )
+ 9. [consume item]
     \end{verbatim}
 \end{multicols}
 \vspace{-2em}
 
-This works fine, but it has a subtle fairness issue.
-To see the problem, remember the ice cream example from the previous lecture (Lecture 14-2).
+This works fine, but it has a subtle fairness issue, called \emph{starvation}, which happens when a thread never gets a chance to run.
+
+To see how our pseudocode could lead to starvation, remember the ice cream example from the previous lecture (Lecture 14-2).
 Consider a producer thread A that is waiting on the \texttt{full} CV.
 Suppose that a consumer thread B arrives, consumes an item, and signals \texttt{full}.
 At this point, another producer thread C arrives and goes to the ready queue.
@@ -263,15 +266,15 @@ The OS schedules C, which produces an item and makes the buffer full again.
 The producer thread A runs next and has to wait again.
 This could continue infinitely many times, starving thread A.
 
-To address this fairness issue, our solution involves a \emph{take-a-number} approach.
+The probability of this happening is extremely low (close to zero!).
+So, we might be fine with it and leave it as is.
+However, if we want to make our code 100\% starvation-free, our solution will involve a \emph{take-a-number} approach.
 In this approach, before accessing the buffer, each incoming thread takes a number.
 They then check the \emph{now-serving} display to see if it's their turn.
 If not, they wait for their turn.
 
 To implement this solution, we introduce \texttt{p\_turn} and \texttt{c\_turn} variables to track turns for producers and consumers, respectively.
 We also introduce \texttt{next\_p\_turn} and \texttt{next\_c\_turn} variables to indicate the \emph{now-serving} number for producers and consumers, respectively.
-
-\newpage
 
 \begin{multicols}{2}
     \small
@@ -280,9 +283,10 @@ We also introduce \texttt{next\_p\_turn} and \texttt{next\_c\_turn} variables to
  1. [produce item]
  2. lock( mutex )
  3. my_turn = p_turn++
- 4. while count == BUFFER_SIZE ||
- 5.       next_p_turn < my_turn
- 6.    cond_wait( full, mutex )
+ 4. while count == BUFF_SIZE ||
+          next_p_turn < my_turn
+ 5.    cond_wait( full, mutex )
+ 6. end while
  7. [add item to buffer]
  8. count++
  9. next_p_turn++
@@ -295,8 +299,9 @@ We also introduce \texttt{next\_p\_turn} and \texttt{next\_c\_turn} variables to
  1. lock( mutex )
  2. my_turn = c_turn++
  3. while count == 0 ||
- 4.       next_c_turn < my_turn
- 5.    cond_wait( empty, mutex )
+          next_c_turn < my_turn
+ 4.    cond_wait( empty, mutex )
+ 5. end while
  6. [remove item from buffer]
  7. count--
  8. next_c_turn++
@@ -319,9 +324,10 @@ To solve this issue, we could replace \texttt{cond\_signal} with \texttt{cond\_b
  1. [produce item]
  2. lock( mutex )
  3. my_turn = p_turn++
- 4. while count == BUFFER_SIZE ||
- 5.       next_p_turn < my_turn
- 6.    cond_wait( full, mutex )
+ 4. while count == BUFF_SIZE ||
+          next_p_turn < my_turn
+ 5.    cond_wait( full, mutex )
+ 6. end while
  7. [add item to buffer]
  8. count++
  9. next_p_turn++
@@ -334,8 +340,9 @@ To solve this issue, we could replace \texttt{cond\_signal} with \texttt{cond\_b
  1. lock( mutex )
  2. my_turn = c_turn++
  3. while count == 0 ||
- 4.       next_c_turn < my_turn
- 5.    cond_wait( empty, mutex )
+          next_c_turn < my_turn
+ 4.    cond_wait( empty, mutex )
+ 5. end while
  6. [remove item from buffer]
  7. count--
  8. next_c_turn++
@@ -354,6 +361,7 @@ We can achieve this by manually creating a FIFO list of waiting threads.
 Each thread will have their own CV to wait on.
 Once a thread is done, they signal exactly the next thread in the line:
 
+\newpage
 
 \begin{multicols}{2}
     \small
@@ -362,17 +370,19 @@ Once a thread is done, they signal exactly the next thread in the line:
  1. [produce item]
  2. lock( mutex )
  3. my_turn = p_turn++
- 4. fifo_push( p_fifo, my_full)
- 5. while count == BUFFER_SIZE ||
- 6.       next_p_turn < my_turn
- 7.    cond_wait( my_full, mutex )
+ 4. fifo_push( p_fifo, my_full )
+ 5. while count == BUFF_SIZE ||
+          next_p_turn < my_turn
+ 6.    cond_wait( my_full, mutex )
+ 7. end while
  8. [add item to buffer]
  9. count++
 10. next_p_turn++
 11. fifo_pop( p_fifo )
 12. if !fifo_is_empty( c_fifo )
 13.    cond_signal(fifo_head(c_fifo))
-14. unlock( mutex )
+14. end if
+15. unlock( mutex )
     \end{verbatim}
     \columnbreak
     \textbf{Consumer}\vspace{-2em}
@@ -381,16 +391,18 @@ Once a thread is done, they signal exactly the next thread in the line:
  2. my_turn = c_turn++
  3. fifo_push( c_fifo, my_empty )
  4. while count == 0 ||
- 5.       next_c_turn < my_turn
- 6.    cond_wait( my_empty, mutex )
+          next_c_turn < my_turn
+ 5.    cond_wait( my_empty, mutex )
+ 6. end while
  7. [remove item from buffer]
  8. count--
  9. next_c_turn++
 10. fifo_pop( c_fifo )
 11. if !fifo_is_empty( p_fifo )
 12.    cond_signal(fifo_head(p_fifo))
-13. unlock( mutex )
-14. [consume item]
+13. end if
+14. unlock( mutex )
+15. [consume item]
     \end{verbatim}
 \end{multicols}
 \vspace{-2em}
@@ -404,11 +416,11 @@ Once a thread is done, they signal exactly the next thread in the line:
 #include <math.h>
 #include "fifo.h"
 
-#define BUFFER_SIZE 100
+#define BUFF_SIZE 100
 #define NUM_PRODUCERS 10
 #define NUM_CONSUMERS 10
 
-int buffer[BUFFER_SIZE];
+int buffer[BUFF_SIZE];
 int p_index = 0;
 int c_index = 0;
 int count = 0;
@@ -442,11 +454,11 @@ void* producer( void* arg ) {
     pthread_mutex_lock(&mutex);
     int my_turn = p_turn++;
     fifo_push(&p_fifo, &full_cv[*id]);
-    while(count == BUFFER_SIZE || next_p_turn < my_turn) {
+    while(count == BUFF_SIZE || next_p_turn < my_turn) {
       pthread_cond_wait( &full_cv[*id], &mutex );
     }
     buffer[p_index] = num;
-    p_index = (p_index + 1) % BUFFER_SIZE;
+    p_index = (p_index + 1) % BUFF_SIZE;
     count++;
     fifo_pop(&p_fifo);
     next_p_turn++;
@@ -471,7 +483,7 @@ void* consumer( void* arg ) {
     }
     int num = buffer[c_index];
     buffer[c_index] = -1;
-    c_index = (c_index + 1) % BUFFER_SIZE;
+    c_index = (c_index + 1) % BUFF_SIZE;
     count--;
     fifo_pop(&c_fifo);
     next_c_turn++;

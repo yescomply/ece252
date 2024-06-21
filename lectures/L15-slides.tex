@@ -48,7 +48,7 @@
 
 	Rules:
 	\begin{itemize}
-		\item The buffer is of capacity \texttt{BUFFER\_SIZE}.
+		\item The buffer is of capacity \texttt{BUFF\_SIZE}.
 		\item Cannot write into a full buffer
 		\item Cannot read from an empty buffer
 	\end{itemize}
@@ -74,7 +74,7 @@
 	 2. added = false
 	 3. while added is false
 	 4.    lock( mutex )
-	 5.    if count < BUFFER_SIZE
+	 5.    if count < BUFF_SIZE
 	 6.        [add item to buffer]
 	 7.        count++
 	 8.        added = true
@@ -131,11 +131,11 @@
 \begin{frame}
 	\frametitle{Use Semaphores To Count}
 
-	Use 2 general semaphores, each with maximum value of \texttt{BUFFER\_SIZE}.
+	Use 2 general semaphores, each with maximum value of \texttt{BUFF\_SIZE}.
 
 	\texttt{items}: starts at 0 and represents how many spaces in the buffer are full.
 
-	\texttt{spaces}: starts at \texttt{BUFFER\_SIZE} and represents the number of spaces in the buffer that are currently empty.
+	\texttt{spaces}: starts at \texttt{BUFF\_SIZE} and represents the number of spaces in the buffer that are currently empty.
 
 \end{frame}
 
@@ -293,8 +293,8 @@
 #include <math.h>
 #include <semaphore.h>
 
-#define BUFFER_SIZE 100
-int buffer[BUFFER_SIZE];
+#define BUFF_SIZE 100
+int buffer[BUFF_SIZE];
 int pindex = 0;
 int cindex = 0;
 sem_t spaces;
@@ -323,7 +323,7 @@ void* producer( void* arg ) {
     sem_wait( &spaces );
     sem_wait( &mutex );
     buffer[pindex] = num;
-    pindex = (pindex + 1) % BUFFER_SIZE;
+    pindex = (pindex + 1) % BUFF_SIZE;
     sem_post( &mutex );
     sem_post( &items );
   }
@@ -344,7 +344,7 @@ void* consumer( void* arg ) {
     sem_wait( &mutex );
     int num = buffer[cindex];
     buffer[cindex] = -1;
-    cindex = (cindex + 1) % BUFFER_SIZE;
+    cindex = (cindex + 1) % BUFF_SIZE;
     sem_post( &mutex );
     sem_post( &spaces );
     consume( *id, num );
@@ -359,7 +359,7 @@ void* consumer( void* arg ) {
 	\frametitle{Multiple Producer-Consumer Example}
 	\begin{lstlisting}[language=C]
 int main( int argc, char** argv ) {
-  sem_init( &spaces, 0, BUFFER_SIZE );
+  sem_init( &spaces, 0, BUFF_SIZE );
   sem_init( &items, 0, 0 );  
   sem_init( &mutex, 0, 1 );
 
@@ -408,12 +408,13 @@ int main( int argc, char** argv ) {
 		\begin{verbatim}
 	 1. [produce item]
 	 2. lock( mutex )
-	 3. while count == BUFFER_SIZE
+	 3. while count == BUFF_SIZE
 	 4.    cond_wait( full, mutex )
-	 5. [add item to buffer]
-	 6. count++
-	 7. cond_signal( empty )
-	 8. unlock( mutex )
+	 5. end while
+	 6. [add item to buffer]
+	 7. count++
+	 8. cond_signal( empty )
+	 9. unlock( mutex )
 		\end{verbatim}
 		\columnbreak
 		\textbf{Consumer}\vspace{-2em}
@@ -421,11 +422,12 @@ int main( int argc, char** argv ) {
 	 1. lock( mutex )
 	 2. while count == 0
 	 3.    cond_wait( empty, mutex )
-	 4. [remove item from buffer]
-	 5. count--
-	 6. cond_signal( full )
-	 7. unlock( mutex )
-	 8. [consume item]
+	 4. end while
+	 5. [remove item from buffer]
+	 6. count--
+	 7. cond_signal( full )
+	 8. unlock( mutex )
+	 9. [consume item]
 		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
@@ -434,9 +436,11 @@ int main( int argc, char** argv ) {
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Where is My Ice Cream?}
-	There is a subtle fairness issue.
+	\frametitle{Starvation: Where is My Ice Cream?}
+
+	There is a subtle fairness issue, called \alert{starvation}, which happens when a thread never gets a chance to run.
 
 	Consider a producer thread A that is waiting on the \texttt{full} CV.
 
@@ -448,8 +452,16 @@ int main( int argc, char** argv ) {
 	The OS schedules C, which produces an item and makes the buffer full again.
 
 	The producer thread A runs next and has to wait again.
+	This could continue \alert{infinitely}, starving thread A.
+\end{frame}
+\begin{frame}
+	\frametitle{Starvation: Where is My Ice Cream?}
 
-	This could continue infinitely many times, starving thread A.
+	The probability of this happening is extremely low (close to zero!).
+
+	So, we might be fine with it and leave it as is.
+
+	However, if we want to make our code 100\% starvation-free, our solution will involve a \alert{take-a-number} approach.
 \end{frame}
 
 \begin{frame}
@@ -460,8 +472,21 @@ int main( int argc, char** argv ) {
 	\end{center}
 \end{frame}
 
+\begin{frame}
+	\frametitle{Take-a-number System}
+	In this approach, before accessing the buffer, each incoming thread takes a number.
+
+	They then check the \emph{now-serving} display to see if it's their turn.
+	If not, they wait for their turn.
+
+	To implement this solution, we introduce \texttt{p\_turn} and \texttt{c\_turn} variables to track turns for producers and consumers, respectively.
+
+	We also introduce \texttt{next\_p\_turn} and \texttt{next\_c\_turn} variables to indicate the \emph{now-serving} number for producers and consumers, respectively.
+
+\end{frame}
+
 \begin{frame}[fragile]
-	\frametitle{Is This Better?}
+	\frametitle{Solution 2}
 
 	\begin{multicols}{2}
 		\small
@@ -470,9 +495,10 @@ int main( int argc, char** argv ) {
 	 1. [produce item]
 	 2. lock( mutex )
 	 3. my_turn = p_turn++
-	 4. while count == BUFFER_SIZE ||
-	 5.       next_p_turn < my_turn
-	 6.    cond_wait( full, mutex )
+	 4. while count == BUFF_SIZE ||
+	          next_p_turn < my_turn
+	 5.    cond_wait( full, mutex )
+	 6. end while
 	 7. [add item to buffer]
 	 8. count++
 	 9. next_p_turn++
@@ -485,8 +511,9 @@ int main( int argc, char** argv ) {
 	 1. lock( mutex )
 	 2. my_turn = c_turn++
 	 3. while count == 0 ||
-	 4.       next_c_turn < my_turn
-	 5.    cond_wait( empty, mutex )
+	          next_c_turn < my_turn
+	 4.    cond_wait( empty, mutex )
+	 5. end while
 	 6. [remove item from buffer]
 	 7. count--
 	 8. next_c_turn++
@@ -502,6 +529,16 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
+	\frametitle{Analysis of Solution 2}
+	Solution 2 is a step in the right direction, but it has a problem.
+
+	In particular, a signal could be delivered to a \alert{wrong} thread—a thread whose turn has not yet come—who will wake up, check the conditions, and go to sleep again, wasting the signal.
+
+	When there is equal number of \texttt{cond\_wait} and \texttt{cond\_signal}, each wasted signal directly translates to a waiting thread that never wakes up!
+
+\end{frame}
+
+\begin{frame}
 	\frametitle{IMMA GO SLEEP!}
 
 	\begin{center}
@@ -509,52 +546,65 @@ int main( int argc, char** argv ) {
 	\end{center}
 \end{frame}
 
-\begin{frame}
-	\frametitle{Is It Really My Turn?}
-	A signal could be delivered to a `wrong' thread—a thread whose turn has not yet come—who will wake up, check the conditions, and go to sleep again, wasting the signal.
-
-	When there is equal number of \texttt{cond\_wait} and \texttt{cond\_signal}, each wasted signal directly translates to a waiting thread that never wakes up!
-\end{frame}
-
 \begin{frame}[fragile]
-	\frametitle{How About This?}
+	\frametitle{Solution 3}
 
 	\begin{multicols}{2}
 		\small
 		\textbf{Producer}
-		\begin{verbatim}
-	 1. [produce item]
-	 2. lock( mutex )
-	 3. my_turn = p_turn++
-	 4. while count == BUFFER_SIZE ||
-	 5.       next_p_turn < my_turn
-	 6.    cond_wait( full, mutex )
-	 7. [add item to buffer]
-	 8. count++
-	 9. next_p_turn++
-	10. cond_broadcast( empty )
-	11. unlock( mutex )
-		\end{verbatim}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. my_turn = p_turn++
+ 4. while count == BUFF_SIZE ||
+          next_p_turn < my_turn
+ 5.    cond_wait( full, mutex )
+ 6. end while
+ 7. [add item to buffer]
+ 8. count++
+ 9. next_p_turn++
+\textcolor{red}{
+10. cond_broadcast( empty )
+}
+11. unlock( mutex )
+		\end{Verbatim}
 		\columnbreak
 		\textbf{Consumer}\vspace{-2em}
-		\begin{verbatim}
-	 1. lock( mutex )
-	 2. my_turn = c_turn++
-	 3. while count == 0 ||
-	 4.       next_c_turn < my_turn
-	 5.    cond_wait( empty, mutex )
-	 6. [remove item from buffer]
-	 7. count--
-	 8. next_c_turn++
-	 9. cond_broadcast( full )
-	10. unlock( mutex )
-	11. [consume item]
-		\end{verbatim}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. my_turn = c_turn++
+ 3. while count == 0 ||
+          next_c_turn < my_turn
+ 4.    cond_wait( empty, mutex )
+ 5. end while
+ 6. [remove item from buffer]
+ 7. count--
+ 8. next_c_turn++
+\textcolor{red}{
+ 9. cond_broadcast( full )
+}
+10. unlock( mutex )
+11. [consume item]
+		\end{Verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
 	Does this work?
 
+\end{frame}
+
+\begin{frame}
+	\frametitle{Analysis of Solution 3}
+	This solution works.
+
+	However, it is very \alert{inefficient} in the sense that we wake everyone up, even though only one of them is allowed to proceed.
+
+	To properly solve the fairness issue and avoid inefficiency, threads need to send their signal to the \alert{right} waiting thread.
+
+	We can achieve this by manually creating a FIFO list of waiting threads.
+
+	Each thread will have their own CV to wait on.
+	Once a thread is done, they signal exactly the next thread in the line:
 \end{frame}
 
 \begin{frame}
@@ -566,49 +616,73 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Are We There?}
+	\frametitle{Solution 4}
 
 	\begin{multicols}{2}
 		\footnotesize
 		\textbf{Producer}
-		\begin{verbatim}
-	 1. [produce item]
-	 2. lock( mutex )
-	 3. my_turn = p_turn++
-	 4. fifo_push( p_fifo, my_full)
-	 5. while count == BUFFER_SIZE ||
-	 6.       next_p_turn < my_turn
-	 7.    cond_wait( my_full, mutex )
-	 8. [add item to buffer]
-	 9. count++
-	10. next_p_turn++
-	11. fifo_pop( p_fifo )
-	12. if !fifo_is_empty( c_fifo )
-	13.    cond_signal(fifo_head(c_fifo))
-	14. unlock( mutex )
-		\end{verbatim}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. my_turn = p_turn++
+\textcolor{red}{
+ 4. fifo_push( p_fifo, my_full )
+}
+ 5. while count == BUFF_SIZE ||
+          next_p_turn < my_turn
+\textcolor{red}{
+ 6.    cond_wait( my_full, mutex )
+}
+ 7. end while
+ 8. [add item to buffer]
+ 9. count++
+10. next_p_turn++
+\textcolor{red}{
+11. fifo_pop( p_fifo )
+}
+\textcolor{red}{
+12. if !fifo_is_empty( c_fifo )
+}
+\textcolor{red}{
+13.    cond_signal(fifo_head(c_fifo))
+}
+14. end if
+15. unlock( mutex )
+		\end{Verbatim}
 		\columnbreak
 		\textbf{Consumer}\vspace{-2em}
-		\begin{verbatim}
-	 1. lock( mutex )
-	 2. my_turn = c_turn++
-	 3. fifo_push( c_fifo, my_empty )
-	 4. while count == 0 ||
-	 5.       next_c_turn < my_turn
-	 6.    cond_wait( my_empty, mutex )
-	 7. [remove item from buffer]
-	 8. count--
-	 9. next_c_turn++
-	10. fifo_pop( c_fifo )
-	11. if !fifo_is_empty( p_fifo )
-	12.    cond_signal(fifo_head(p_fifo))
-	13. unlock( mutex )
-	14. [consume item]
-		\end{verbatim}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. my_turn = c_turn++
+\textcolor{red}{
+ 3. fifo_push( c_fifo, my_empty )
+}
+ 4. while count == 0 ||
+          next_c_turn < my_turn
+\textcolor{red}{
+ 5.    cond_wait( my_empty, mutex )
+}
+ 6. end while
+ 7. [remove item from buffer]
+ 8. count--
+ 9. next_c_turn++
+\textcolor{red}{
+10. fifo_pop( c_fifo )
+}
+\textcolor{red}{
+11. if !fifo_is_empty( p_fifo )
+}
+\textcolor{red}{
+12.    cond_signal(fifo_head(p_fifo))
+}
+13. end if
+14. unlock( mutex )
+15. [consume item]
+		\end{Verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
-	Does this work?
+	Are we finally there?
 \end{frame}
 
 \end{document}

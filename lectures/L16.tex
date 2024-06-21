@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 16 --- The Readers-Writers Problem }{\term}{Jeff Zarnett}
+\lecture{ 16 --- The Readers-Writers Problem }{\term}{By Jeff Zarnett and Seyed Majid Zahedi}
 
 \section*{The Readers-Writers Problem}
 
@@ -16,6 +16,8 @@ This problem is about concurrent reading and modification of a data structure or
 Or, to sum that up, a writer cannot enter the critical section while any other thread (whether reader or writer) is there. While a writer is in the critical section, neither readers nor writers may enter the critical section~\cite{lbs}. This is very often how file systems work: a file may be read concurrently by any number of threads, but only one thread may write to it at a time (and to prevent reading of inconsistent data, no thread may read during the write).
 
 This is similar to, but distinct from, the general mutual exclusion problem and the producer-consumer problem. In the readers-writers problem, readers do not modify the data (consumers do take things out of the buffer, modifying it). If any thread could read or write the shared data structure, we would have to use the general mutual exclusion solution. Although the general mutual exclusion routine would work in that it would prevent errors, it is a serious performance reduction versus allowing multiple readers concurrently~\cite{osi}. Thus, this situation is worth examining in its own right.
+
+\subsection*{Reader-Writer Implementation with Semaphores}
 
 Let us keep track of the number of readers at any given time with a variable \texttt{readers}. We will need a way of protecting this variable from concurrent modifications, so there will have to be a binary semaphore \texttt{mutex}. We will also need one further semaphore, \texttt{roomEmpty}, as a way of indicating that the room is empty. A writer has to wait for the room to be empty (i.e., \texttt{wait} on the \texttt{roomEmpty} semaphore) before it can enter. The solution comes from~\cite{lbs}:
 
@@ -62,11 +64,12 @@ The reader code is somewhat more complicated. The first reader that arrives enco
 
 The reader code has that situation that makes us concerned about the possibility of deadlock: a wait on \texttt{roomEmpty} inside a critical section controlled by \texttt{mutex}. With a bit of reasoning, we can convince ourselves that there is no risk: the only situation in which a thread waits on \texttt{roomEmpty} is that a writer is currently in its critical section. No other reader thread can get the \texttt{mutex} lock. As long as the write operation takes finite time, eventually the writer will post the \texttt{roomEmpty} semaphore and the threads can continue. Deadlock is not a problem.
 
-There is, however, a second problem that we need to be concerned about. Suppose some readers are in the room, and a writer arrives. The writer must wait until all the readers have left the room. When each of the readers is finished, it exits the room. In the meantime, more readers arrive and enter the room. So even though each reader is in the room for only a finite amount of time, there is never a moment when the room has no readers in it. This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever. This is a situation called \textit{starvation}: a thread never gets a chance to run.
+There is, however, a second problem that we need to be concerned about. Suppose some readers are in the room, and a writer arrives. The writer must wait until all the readers have left the room. When each of the readers is finished, it exits the room. In the meantime, more readers arrive and enter the room. So even though each reader is in the room for only a finite amount of time, there is never a moment when the room has no readers in it. This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever.
+This is an instance of \textit{starvation}.
 
-Recall criterion 3 of the list of properties we want in any mutual exclusion solution: it must not be possible for a thread requiring access to the critical section to be delayed indefinitely. This problem is just as bad as deadlock in that if it is discovered, it eliminates a proposed solution as an acceptable option, even though starvation might only be an unlikely event. We must therefore improve on this solution such that there is no longer the possibility that a writer starves.
-
-Conceptually, the solution that accomplishes the goal looks something like this: when a writer arrives, any readers currently reading should be permitted to finish their read, but no new readers should be allowed to start reading. Thus, eventually, all the readers currently in the critical section will finish, the writer will get a turn, because the room is empty, and when the writer is done, all the readers that arrived after the writer will be able to enter.
+We might want to improve on this solution such that there is no longer the possibility that a writer starves.
+Conceptually, the solution that accomplishes this goal looks something like the following.
+When a writer arrives, any readers currently reading should be permitted to finish their read, but no new readers should be allowed to start reading. Thus, eventually, all the readers currently in the critical section will finish, the writer will get a turn, because the room is empty, and when the writer is done, all the readers that arrived after the writer will be able to enter.
 
 A new binary semaphore is needed here, called \texttt{turnstile}.
 
@@ -126,151 +129,198 @@ Note that this solution does not give writers any particular priority: when a wr
 Let's modify the solution so that writers have priority over readers. Giving writers priority may potentially cause readers to starve, but you may ignore this. We will probably want to break up the \texttt{roomEmpty} semaphore into \texttt{noReaders} and \texttt{noWriters}. A reader in the critical section should hold the \texttt{noReaders} semaphore and a writer should hold \texttt{noWriters} and \texttt{noReaders}.
 
 \begin{multicols}{2}
-	\textbf{Writer}\vspace{-1em}
-	\begin{verbatim}
-     1. wait( writeMutex )
-     2. writers++
-     3. if writers == 1
-     4.     wait( noReaders )
-     5. end if
-     6. post( writeMutex )
-     7. wait ( noWriters )
-     8. [write data]
-     9. post( noWriters ) 
-    10. wait( writeMutex )
-    11. writers--
-    12. if writers == 0
-    13.    post( noReaders )
-    14. end if
-    15. post( writeMutex )     
-  \end{verbatim}
-	\columnbreak
-	\textbf{Reader}\vspace{-2em}
-	\begin{verbatim}
-     1. wait( noReaders )
-     2. wait( readMutex )
-     3. readers++
-     4. if readers == 1
-     5.    wait( noWriters )
-     6. end if
-     7. post( readMutex )
-     8. post( noReaders )
-     9. [read data]
-    10. wait( readMutex )
-    11. readers--
-    12. if readers == 0
-    13.     post( noWriters )
-    14. end if
-    15. post( readMutex )
-\end{verbatim}
+    \textbf{Writer}\vspace{-2em}
+    \begin{verbatim}
+ 1. wait( writeMutex )
+ 2. writers++
+ 3. if writers == 1
+ 4.     wait( noReaders )
+ 5. end if
+ 6. post( writeMutex )
+ 7. wait ( noWriters )
+ 8. [write data]
+ 9. post( noWriters )
+10. wait( writeMutex )
+11. writers--
+12. if writers == 0
+13.    post( noReaders )
+14. end if
+15. post( writeMutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Reader}\vspace{-2em}
+    \begin{verbatim}
+ 1. wait( noReaders )
+ 2. wait( readMutex )
+ 3. readers++
+ 4. if readers == 1
+ 5.    wait( noWriters )
+ 6. end if
+ 7. post( readMutex )
+ 8. post( noReaders )
+ 9. [read data]
+10. wait( readMutex )
+11. readers--
+12. if readers == 0
+13.     post( noWriters )
+14. end if
+15. post( readMutex )
+    \end{verbatim}
 \end{multicols}
 \vspace{-2em}
 
 Yikes! The complexity for the writer increased dramatically. The reader is not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader.
 
-\subsection*{Readers Writers Example}
-Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphores (optionally using a mutex to replace a semaphore). But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel. We can probably well imagine the actual complexity of the previous solution, so it's our hope that the readers-writers lock would make our code simpler to read and harder to make mistakes.
+\subsection*{Reader-Writer Implementation with Monitor}
 
-The type for the lock is \texttt{pthread\_rwlock\_t}. It is analogous, obviously, to the mutex type \texttt{pthread\_mutex\_t}. Let's consider the functions that we have:
+We next focus on implementing the reader-writer problem with monitor.
+For this, we introduce the following:
+\begin{itemize}
+    \item One mutex;
+    \item Two condition variables: \texttt{ok2write} and \texttt{ok2read}; and
+    \item Four variables: \texttt{ww} (\# of waiting writers), \texttt{wr} (\# of waiting readers), \texttt{aw} (\# of active writers), and \texttt{ar} (\# of active readers).
+\end{itemize}
 
-\begin{lstlisting}[language=C]
-pthread_rwlock_init( pthread_rwlock_t * rwlock, pthread_rwlockattr_t * attr )
-pthread_rwlock_rdlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_wrlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_trywrlock( pthread_rwlock_t  *  rwlock )
-pthread_rwlock_unlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_destroy( pthread_rwlock_t * rwlock )
-\end{lstlisting}
-
-In general our syntax very much resembles that of the mutex (attribute initialization and destruction not shown but they do exist). There are some small noteworthy differences, other than obviously the different type of the structure passed. Whereas before we had functions for lock and trylock, we now have those split into readlock and writelock (each of which has its own trylock function). As before, we will return to the subject of how trylock works soon.
-
-In theory, the same thread may lock the same rwlock $n$ times; just remember to unlock it $n$ times as well.
-
-And speaking of unlock, there's no specifying whether you are releasing a read or write lock. This is because it is unnecessary; the implementation unlocks whatever type the calling thread was holding. Much like \texttt{close()}, if we can figure out what we're closing we don't need the caller of the function to specify what to do.
-
-As for whether readers or writers get priority, the specification says this is implementation defined. If possible, for threads of equal priority, a writer takes precedence over a reader. But your system may vary.
-
-Consider the following example of the simple readers-writers (without writer priority and with risk of starvation) using the ``old'' way:
+We will use the mutex for mutual exclusion (duh!).
+We will use \texttt{ok2write} for writers and \texttt{ok2read} for readers to wait on.
+And the four variables are used to track the state of waiting/active readers and writers:
 
 \begin{multicols}{2}
-	\begin{lstlisting}[language=C]
-int readers;
-pthread_mutex_t mutex;
-sem_t roomEmpty;
+    \textbf{Writer}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ar > 0
+ 3.     ww++
+ 4.     cond_wait( ok2write )
+ 5.     ww--
+ 6. end while
+ 7. aw++
+ 8. unlock ( mutex )
+ 9. [write data]
+10. lock( mutex )
+11. aw--
+12. if ww > 0
+13.    cond_signal( ok2write )
+14. else if wr > 0
+15.    cond_broadcast( ok2read )
+16. end if
+17. unlock ( mutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Reader}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( ok2read )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+13.     cond_signal( ok2write )
+14. end if
+15. unlock( mutex )
 
-void init( ) {
-  readers = 0;
-  pthread_mutex_init( &mutex, NULL );
-  sem_init( &roomEmpty, 0, 1 );
-}
 
-void cleanup( ) {
-  pthread_mutex_destroy( &mutex );
-  sem_destroy( &roomEmpty );
-}
-\end{lstlisting}
-
-	\columnbreak
-
-	\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  sem_wait( &roomEmpty );
-  write_data( arg );
-  sem_post( &roomEmpty );
-}
-
-void* reader( void* read ) {
-  pthread_mutex_lock( &mutex );
-  readers++;
-  if ( readers == 1 ) {
-    sem_wait( &roomEmpty );
-  }
-  pthread_mutex_unlock( &mutex );
-  read_data( arg );
-  pthread_mutex_lock( &mutex );
-  readers--;
-  if ( readers == 0 ) {
-    sem_post( &roomEmpty );
-  }
-  pthread_mutex_unlock( &mutex );
-}
-\end{lstlisting}
-
+    \end{verbatim}
 \end{multicols}
+\vspace{-2em}
 
-Now see it as it would be with the use of a rwlock!
+
+Due to the use of a single mutex, at any given time, we know exactly how many waiting/active reader and writer threads we have.
+This pseudocode prioritizes writers over readers for two main reasons.
+First, writers wait if there are any active readers or writers.
+Readers, on the other hand, wait if there are any active or waiting writers.
+
+Second, on their way out, each writer signals another waiting writer if there are any.
+The last writer signals all waiting readers if there are any (broadcast).
+Conversely, the last reader only signals a waiting writer if there are any.
+
+For readers, removing the \texttt{if} statement in line (12) would not change the correctness of the pseudocode.
+However, doing so would be inefficient, as the thread that wakes up might need to go back to sleep.
+Similarly, broadcasting in line (13) instead of signaling would preserve the correctness of the code.
+However, it would again introduce unnecessary inefficiency, as it would wake up all waiting writers, making them all compete for the chance to enter the critical section.
+
+If we substitute the two CVs (i.e., \texttt{ok2write} and \texttt{ok2read}) with a single CV, say \texttt{ok2continue}, then the code will not work.
+The reason for this is that the signals in line (13) of both reader and writer threads could be delivered to a `wrong` thread, wasting the signal.
+To solve this, we could use \texttt{cond\_broadcast} instead.
+However, this implementation would be inefficient, as it wakes up all waiting threads (readers and writers) for potentially only one of them to continue.
+
+In this code, readers could starve because writers have higher priority.
+This starvation is `OK' because it is allowed by design.
+However, the code suffers from another form of starvation for writer threads.
+This starvation has the same nature as we discussed for the producer-consumer implementation (the `where is my ice cream?' problem).
+In particular, a writer could indefinitely wait for other writer threads.
+
+As we discussed in the previous lecture, the probability of such an event happening is extremely low.
+So, we might want to leave this as is and move on.
+However, like before, let's try to make our solution 100\% starvation-free!
+
+As a first attempt, one might think that changing line (2) of writers from `\texttt{while aw + ar > 0}' to `\texttt{while aw + ar + ww > 0}' solves the problem.
+This, however, is not the solution and could cause a deadlock (why?).
+
+Instead, to properly address the issue, we should take the same approach we took with the producer-consumer implementation.
+Namely, we use a \emph{take-a-number} system and make writers wait in a FIFO line:
 
 \begin{multicols}{2}
-	\begin{lstlisting}[language=C]
-pthread_rwlock_t rwlock;
+    \textbf{Writer}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. my_turn = w_turn++
+ 3. fifo_push(w_fifo, my_ok2write)
+ 4. while aw + ar > 0 ||
+          next_w_turn < my_turn
+ 5.     ww++
+ 6.     cond_wait( my_ok2write )
+ 7.     ww--
+ 8. end while
+ 9. aw++
+10. fifo_pop( w_fifo )
+11. unlock ( mutex )
+12. [write data]
+13. lock( mutex )
+14. aw--
+15. next_w_turn++
+16. if ww > 0
+17.    cond_signal(fifo_head(w_fifo))
+18. else if wr > 0
+19.    cond_broadcast( ok2read )
+20. end if
+21. unlock ( mutex )
+    \end{verbatim}
+    \columnbreak
+    \textbf{Reader}\vspace{-2em}
+    \begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( ok2read )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+13.    cond_signal(fifo_head(w_fifo))
+14. end if
+15. unlock( mutex )
 
-void init( ) {
-  pthread_rwlock_init( &rwlock, NULL );
-}
 
-void cleanup( ) {
-  pthread_rwlock_destroy( &rwlock );
-}
-\end{lstlisting}
 
-	\columnbreak
 
-	\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  pthread_rwlock_wrlock( &rwlock );
-  write_data( arg );
-  pthread_rwlock_unlock( &rwlock );
-}
 
-void* reader( void* read ) {
-  pthread_rwlock_rdlock( &rwlock );
-  read_data( arg );
-  pthread_rwlock_unlock( &rwlock );
-}
-\end{lstlisting}
 
+
+    \end{verbatim}
 \end{multicols}
+\vspace{-2em}
+
 
 \subsection*{Seek and Destroy: the Search-Insert-Delete Problem}
 
@@ -314,9 +364,9 @@ void* searcher_thread( void *target ) {
     sem_wait( &no_searchers );
   }
   pthread_mutex_unlock( &searcher_mutex );
-  
+
   search( target );
-  
+
   pthread_mutex_lock( &searcher_mutex );
   searchers--;
   if ( searchers == 0 ) {
@@ -330,9 +380,9 @@ void* searcher_thread( void *target ) {
 void* deleter_thread( void* to_delete ) {
   sem_wait( &no_searchers );
   sem_wait( &no_inserters );
-  
+
   delete( to_delete );
-  
+
   sem_post( &no_inserters );
   sem_post( &no_searchers );
 }
@@ -345,12 +395,12 @@ void* inserter_thread( void *to_insert ) {
     sem_wait( &no_inserters );
   }
   pthread_mutex_unlock( &inserter_mutex );
-  
+
   node * insert_after = find_insert_location( );
   pthread_mutex_lock( &perform_insert );
   insert( to_insert, insert_after ); /* Can update its position if needed */
   pthread_mutex_unlock( &perform_insert );
-  
+
   pthread_mutex_lock( &inserter_mutex );
   inserters--;
   if ( inserters == 0 ) {
@@ -362,7 +412,9 @@ void* inserter_thread( void *to_insert ) {
 		\end{multicols}
 	}
 
-Question: could you implement this with a \texttt{pthread\_rwlock\_t} despite there being three kinds of thread?
+Question: could you implement this with a \texttt{rwlock\_t} despite there being three kinds of thread?
+
+
 
 
 \input{bibliography.tex}

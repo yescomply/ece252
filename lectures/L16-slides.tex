@@ -3,9 +3,10 @@
 
 \title{Lecture 16 --- The Readers-Writers Problem }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}\institute{Department of Electrical and Computer Engineering \\
+\author{By Jeff Zarnett and Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -89,9 +90,9 @@
 	 
 	 
 	 
-  \end{verbatim}
+  		\end{verbatim}
 		\columnbreak
-		\textbf{Reader}
+		\textbf{Reader}\vspace{-2em}
 		\begin{verbatim}
 	 1. wait( mutex )
 	 2. readers++
@@ -106,7 +107,7 @@
 	11.     post( roomEmpty )
 	12. end if
 	13. post( mutex )
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
@@ -176,27 +177,11 @@
 
 	This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever.
 
-	This is a situation called \alert{starvation}: a thread never gets a chance to run.
+	This is an instance of \alert{starvation}.
 
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Starvation}
-
-	Recall criterion 3 of properties we want in any mutual exclusion solution:\\
-	\quad It must not be possible for a thread to be delayed indefinitely.
-
-	This problem is just as bad as deadlock in that if it is discovered, it eliminates a proposed solution as an acceptable option.
-
-	Even though starvation might only be an unlikely event.
-
-	We must therefore improve on this solution such that there is no longer the possibility that a writer starves.
-
+	We might want to improve on this solution such that there is no longer the possibility that a writer starves.
 
 \end{frame}
-
 
 \begin{frame}
 	\frametitle{Readers-Writers Solution 2}
@@ -214,6 +199,7 @@
 
 \begin{frame}[fragile]
 	\frametitle{Readers-Writers Solution 2}
+
 	\begin{multicols}{2}
 		\textbf{Writer}
 		\begin{verbatim}
@@ -222,6 +208,9 @@
 	 3. [write data]
 	 4. post( turnstile )
 	 5. post( roomEmpty )
+
+
+
 	 
 	 
 	 
@@ -230,11 +219,9 @@
 	 
 	 
 	 
-	 
-	 
-  \end{verbatim}
+		\end{verbatim}
 		\columnbreak
-		\textbf{Reader}
+		\textbf{Reader}\vspace{-1em}
 		\begin{verbatim}
 	 1. wait( turnstile )
 	 2. post( turnstile )
@@ -251,7 +238,7 @@
 	13.     post( roomEmpty )
 	14. end if
 	15. post( mutex )
-  \end{verbatim}
+  		\end{verbatim}
 	\end{multicols}
 
 \end{frame}
@@ -329,45 +316,46 @@
 	\frametitle{Writer Priority}
 
 	\begin{multicols}{2}
-		\textbf{Writer}\vspace{-1em}
+		\small
+		\textbf{Writer}
 		\begin{verbatim}
-     1. wait( writeMutex )
-     2. writers++
-     3. if writers == 1
-     4.     wait( noReaders )
-     5. end if
-     6. post( writeMutex )
-     7. wait ( noWriters )
-     8. [write data]
-     9. post( noWriters ) 
-    10. wait( writeMutex )
-    11. writers--
-    12. if writers == 0
-    13.    post( noReaders )
-    14. end if
-    15. post( writeMutex )     
-  \end{verbatim}
+ 1. wait( writeMutex )
+ 2. writers++
+ 3. if writers == 1
+ 4.     wait( noReaders )
+ 5. end if
+ 6. post( writeMutex )
+ 7. wait ( noWriters )
+ 8. [write data]
+ 9. post( noWriters )
+10. wait( writeMutex )
+11. writers--
+12. if writers == 0
+13.    post( noReaders )
+14. end if
+15. post( writeMutex )
+  		\end{verbatim}
 		\columnbreak
 		\textbf{Reader}\vspace{-2em}
 		\begin{verbatim}
-     1. wait( noReaders )
-     2. wait( readMutex )
-     3. readers++
-     4. if readers == 1
-     5.    wait( noWriters )
-     6. end if
-     7. post( readMutex )
-     8. post( noReaders )
-     9. [read data]
-    10. wait( readMutex )
-    11. readers--
-    12. if readers == 0
-    13.     post( noWriters )
-    14. end if
-    15. post( readMutex )
-\end{verbatim}
+ 1. wait( noReaders )
+ 2. wait( readMutex )
+ 3. readers++
+ 4. if readers == 1
+ 5.    wait( noWriters )
+ 6. end if
+ 7. post( readMutex )
+ 8. post( noReaders )
+ 9. [read data]
+10. wait( readMutex )
+11. readers--
+12. if readers == 0
+13.     post( noWriters )
+14. end if
+15. post( readMutex )
+
+		\end{verbatim}
 	\end{multicols}
-	\vspace{-2em}
 
 \end{frame}
 
@@ -385,190 +373,414 @@
 
 
 \begin{frame}
-	\frametitle{Too Much Typing?}
+	\frametitle{Writer-Reader Implementation with Monitor}
 
-	Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphore and mutex constructs.
+	We will use the mutex for mutual exclusion (duh!).
 
-	But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel.
+	We will use \texttt{ok2write} for writers and \texttt{ok2read} for readers to wait on.
 
-	The type for the lock is \texttt{pthread\_rwlock\_t}.
+	Four variables are used to track the state of waiting/active readers and writers:
 
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{RW Lock Syntax: Init, Destroy}
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_init( pthread_rwlock_t * rwlock, pthread_rwlockattr_t * attr )
-\end{lstlisting}
-
-	\texttt{rwlock}: the lock to initialize.
-
-	\texttt{attr}: the attributes (\texttt{NULL} for defaults is fine.)
-
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_destroy( pthread_rwlock_t * rwlock )
-\end{lstlisting}
-
-	\texttt{rwlock}: the lock to destroy.
-
-
-	Both of these are exactly like the regular mutex.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{RW Lock Syntax: Locking}
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_rdlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_wrlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_trywrlock( pthread_rwlock_t  *  rwlock )
-\end{lstlisting}
-
-	We can acquire a read lock, or a write lock.
-
-	Pretty self-explanatory, which is which and when you use what.
-
-	For each of those there is an associated trylock function.
-
-	All four functions take one argument: \texttt{rwlock}, the lock.
-
+	\begin{enumerate}
+		\item \texttt{ww} for \# of waiting writers;
+		\item \texttt{wr} for \# of waiting readers;
+		\item \texttt{aw} for \# of active writers; and
+		\item \texttt{ar} for \# of active readers.
+	\end{enumerate}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-	\frametitle{RW Lock Syntax: Unlock}
+	\frametitle{Solution 1}
 
-	\begin{lstlisting}[language=C]
-pthread_rwlock_unlock( pthread_rwlock_t * rwlock )
-\end{lstlisting}
+	\begin{multicols}{2}
+		\small
+		\textbf{Writer}
+		\begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ar > 0
+ 3.     ww++
+ 4.     cond_wait( ok2write )
+ 5.     ww--
+ 6. end while
+ 7. aw++
+ 8. unlock ( mutex )
+ 9. [write data]
+10. lock( mutex )
+11. aw--
+12. if ww > 0
+13.    cond_signal( ok2write )
+14. else if wr > 0
+15.    cond_broadcast( ok2read )
+16. end if
+17. unlock ( mutex )
+		\end{verbatim}
+		\columnbreak
+		\textbf{Reader}
+		\begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( ok2read )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+13.     cond_signal( ok2write )
+14. end if
+15. unlock( mutex )
 
-	Unlock works just like the regular mutex unlock.
 
-	We do not need to specify what kind of lock we are releasing.
+		\end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
 
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Analysis of Solution 1}
+	Due to the use of a single mutex, at any given time, we know exactly how many waiting/active reader and writer threads we have.
+
+	This pseudocode prioritizes writers over readers for two main reasons.
+
+	(1) writers wait if there are any active readers or writers.
+	Readers, on the other hand, wait if there are any active or waiting writers.
+
+
+	(2) on their way out, each writer signals another waiting writer if there are any.
+	The last writer signals all waiting readers if there are any (broadcast).
+	Conversely, the last reader only signals a waiting writer if there are any.
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Would This Work?}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Writer}
+		\begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ar > 0
+ 3.     ww++
+ 4.     cond_wait( ok2write )
+ 5.     ww--
+ 6. end while
+ 7. aw++
+ 8. unlock ( mutex )
+ 9. [write data]
+10. lock( mutex )
+11. aw--
+12. if ww > 0
+13.    cond_signal( ok2write )
+14. else if wr > 0
+15.    cond_broadcast( ok2read )
+16. end if
+17. unlock ( mutex )
+		\end{verbatim}
+		\columnbreak
+		\textbf{Reader}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( ok2read )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+\textcolor{red}{
+\sout{
+12. if ar == 0 && ww > 0
+}
+}
+13.     cond_signal( ok2write )
+\textcolor{red}{
+\sout{
+14. end if
+}
+}
+15. unlock( mutex )
+
+
+		\end{Verbatim}
+	\end{multicols}
+	\vspace{-2em}
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{How About This?}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Writer}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. while aw + ar > 0
+ 3.     ww++
+ 4.     cond_wait( \textcolor{red}{ok2go} )
+ 5.     ww--
+ 6. end while
+ 7. aw++
+ 8. unlock ( mutex )
+ 9. [write data]
+10. lock( mutex )
+11. aw--
+12. if ww > 0
+13.    cond_signal( \textcolor{red}{ok2go} )
+14. else if wr > 0
+15.    cond_broadcast( \textcolor{red}{ok2go} )
+16. end if
+17. unlock ( mutex )
+		\end{Verbatim}
+		\columnbreak
+		\textbf{Reader}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( \textcolor{red}{ok2go} )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+13.     cond_signal( \textcolor{red}{ok2go} )
+14. end if
+15. unlock( mutex )
+
+
+		\end{Verbatim}
+	\end{multicols}
+	\vspace{-2em}
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{How About This?}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Writer}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. while aw + ar > 0
+ 3.     ww++
+ 4.     cond_wait( \textcolor{red}{ok2go} )
+ 5.     ww--
+ 6. end while
+ 7. aw++
+ 8. unlock ( mutex )
+ 9. [write data]
+10. lock( mutex )
+11. aw--
+12. if ww > 0
+13.    \textcolor{red}{cond_broadcast( ok2go )}
+14. else if wr > 0
+15.    cond_broadcast( \textcolor{red}{ok2go} )
+16. end if
+17. unlock ( mutex )
+		\end{Verbatim}
+		\columnbreak
+		\textbf{Reader}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( \textcolor{red}{ok2go} )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+13.     \textcolor{red}{cond_broadcast( ok2go )}
+14. end if
+15. unlock( mutex )
+
+
+		\end{Verbatim}
+	\end{multicols}
+	\vspace{-2em}
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{What About Starvation?}
+	Readers could starve because writers have higher priority.
+
+	But this starvation is `OK' because it is allowed by design.
+
+	However, the code suffers from another form of starvation for writer threads.
+
+	This starvation has the same nature as we discussed for the producer-consumer implementation (the `where is my ice cream?' problem).
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Writer Priority?}
+	\frametitle{What About Starvation?}
+	In particular, a writer could indefinitely wait for other writer threads.
 
-	As for whether readers or writers get priority, the specification says this is implementation defined.
+	As we discussed in the previous lecture, the probability of such an event happening is extremely low.
 
-	If possible, for threads of equal priority, a writer takes precedence over a reader.
+	So, we might want to leave this as is and move on.
 
-	But your system may vary.
-
-
+	However, like before, let's try to make our solution 100\% starvation-free!
 \end{frame}
 
 
+\begin{frame}[fragile]
+	\frametitle{Solution 2: Does It Work?}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Writer}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+\textcolor{red}{
+ 2. while aw + ar + ww > 0
+}
+ 3.     ww++
+ 4.     cond_wait( ok2write )
+ 5.     ww--
+ 6. end while
+ 7. aw++
+ 8. unlock ( mutex )
+ 9. [write data]
+10. lock( mutex )
+11. aw--
+12. if ww > 0
+13.    cond_signal( ok2write )
+14. else if wr > 0
+15.    cond_broadcast( ok2read )
+16. end if
+17. unlock ( mutex )
+		\end{Verbatim}
+		\columnbreak
+		\textbf{Reader}
+		\begin{verbatim}
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( ok2read )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+13.     cond_signal( ok2write )
+14. end if
+15. unlock( mutex )
+
+
+		\end{verbatim}
+	\end{multicols}
+\end{frame}
 
 \begin{frame}
-	\frametitle{Mine, Mine, Mine!}
+	\frametitle{Analysis of Solution 2}
 
-	In theory, the same thread may lock the same rwlock $n$ times.
-
-	Just remember to unlock it $n$ times as well.
-
-	Readers get priority? Implementation defined.
-
-\end{frame}
+	It could cause a deadlock (why?).
 
 
-\begin{frame}[fragile]
-	\frametitle{Without RW Locks}
+	Instead, to properly address the issue, we should take the same approach we took with the producer-consumer implementation.
 
-	\begin{multicols}{2}
-		\begin{lstlisting}[language=C]
-int readers;
-pthread_mutex_t mutex;
-sem_t roomEmpty;
-
-void init( ) {
-  readers = 0;
-  pthread_mutex_init( &mutex, NULL );
-  sem_init( &roomEmpty, 0, 1 );
-}
-
-void cleanup( ) {
-  pthread_mutex_destroy( &mutex );
-  sem_destroy( &roomEmpty );
-}
-\end{lstlisting}
-
-		\columnbreak
-
-		\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  sem_wait( &roomEmpty );
-  write_data( arg );
-  sem_post( &roomEmpty );
-}
-
-void* reader( void* read ) {
-  pthread_mutex_lock( &mutex );
-  readers++;
-  if ( readers == 1 ) {
-    sem_wait( &roomEmpty );
-  }
-  pthread_mutex_unlock( &mutex );
-  read_data( arg );
-  pthread_mutex_lock( &mutex );
-  readers--;
-  if ( readers == 0 ) {
-    sem_post( &roomEmpty );
-  }
-  pthread_mutex_unlock( &mutex );
-}
-\end{lstlisting}
-
-	\end{multicols}
-
+	Namely, we use a \alert{take-a-number} system and make writers wait in a FIFO line.
 
 \end{frame}
 
-
 \begin{frame}[fragile]
-	\frametitle{With RW Locks}
+	\frametitle{Solution 3}
 
 	\begin{multicols}{2}
-		\begin{lstlisting}[language=C]
-pthread_rwlock_t rwlock;
-
-void init( ) {
-  pthread_rwlock_init( &rwlock, NULL );
+		\footnotesize
+		\textbf{Writer}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+\textcolor{red}{
+ 2. my_turn = w_turn++
 }
-
-void cleanup( ) {
-  pthread_rwlock_destroy( &rwlock );
+\textcolor{red}{
+ 3. fifo_push(w_fifo, my_ok2write)
 }
-\end{lstlisting}
-
-		\columnbreak
-
-		\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  pthread_rwlock_wrlock( &rwlock );
-  write_data( arg );
-  pthread_rwlock_unlock( &rwlock );
+ 4. while aw + ar > 0 ||
+\textcolor{red}{
+          next_w_turn < my_turn
 }
-
-void* reader( void* read ) {
-  pthread_rwlock_rdlock( &rwlock );
-  read_data( arg );
-  pthread_rwlock_unlock( &rwlock );
+ 5.     ww++
+\textcolor{red}{
+ 6.     cond_wait( my_ok2write )
 }
-\end{lstlisting}
+ 7.     ww--
+ 8. end while
+ 9. aw++
+\textcolor{red}{
+10. fifo_pop( w_fifo )
+}
+11. unlock ( mutex )
+12. [write data]
+13. lock( mutex )
+14. aw--
+\textcolor{red}{
+15. next_w_turn++
+}
+16. if ww > 0
+\textcolor{red}{
+17.    cond_signal(fifo_head(w_fifo))
+}
+18. else if wr > 0
+19.    cond_broadcast( ok2read )
+20. end if
+21. unlock ( mutex )
+    \end{Verbatim}
+    \columnbreak
+    \textbf{Reader}
+    \begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. while aw + ww > 0
+ 3.    wr++
+ 4.    cond_wait( ok2read )
+ 5.    wr--
+ 6. end while
+ 7. ar++
+ 8. unlock( mutex )
+ 9. [read data]
+10. lock( mutex )
+11. ar--
+12. if ar == 0 && ww > 0
+\textcolor{red}{
+13.    cond_signal(fifo_head(w_fifo))
+}
+14. end if
+15. unlock( mutex )
 
-	\end{multicols}
 
-	Conclusion: don't reinvent the wheel!
+
+
+
+
+
+    \end{Verbatim}
+\end{multicols}
+\vspace{-2em}
 
 \end{frame}
 
@@ -730,7 +942,7 @@ void* inserter_thread( void *to_insert ) {
 \begin{frame}
 \frametitle{Make It Work}
 
-Could you implement Search-Insert-Delete with a \texttt{pthread\_rwlock\_t} despite there being three kinds of thread?
+Could you implement Search-Insert-Delete with a \texttt{rwlock\_t} despite there being three kinds of thread?
 
 \end{frame}
 
