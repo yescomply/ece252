@@ -250,7 +250,53 @@ The reason for this is that the signals in line (13) of both reader and writer t
 To solve this, we could use \texttt{cond\_broadcast} instead.
 However, this implementation would be inefficient, as it wakes up all waiting threads (readers and writers) for potentially only one of them to continue.
 
-In this code, readers could starve because writers have higher priority.
+\susection*{RWLock}
+
+Using the pseudocode as above, we can implement a readers-writers lock.
+The type for our lock is rwlock_t, and the following functions are used alongside it:
+
+	\begin{lstlisting}[language=C]
+rwlock_init( rwlock_t * rwlock )
+rwlock_destroy( rwlock_t * rwlock )
+rwlock_r_lock( rwlock_t * rwlock )
+rwlock_w_lock( rwlock_t * rwlock )
+rwlock_r_unlock( rwlock_t  *  rwlock )
+rwlock_w_unlock( rwlock_t  *  rwlock )
+	\end{lstlisting}
+
+	In general our syntax very much resembles that of the mutex.
+    Whereas before we had functions for lock, we now have those split into readlock and writelock.
+    In theory, the same thread may lock the same rwlock n times; just remember to unlock it n times as well.
+    Now, consider the following example of a simple readers-writers example:
+
+	\begin{lstlisting}[language=C]
+rwlock_t rwlock;
+
+void init( ) {
+  rwlock_init( &rwlock );
+}
+
+void cleanup( ) {
+  rwlock_destroy( &rwlock );
+}
+
+void* writer( void* arg ) {
+  rwlock_w_lock( &rwlock );
+  write_data( arg );
+  rwlock_w_unlock( &rwlock );
+}
+
+void* reader( void* read ) {
+  rwlock_r_lock( &rwlock );
+  read_data( arg );
+  rwlock_r_unlock( &rwlock );
+}
+    \end{lstlisting}
+
+
+\subsubsection*{Starvation of Writers}
+
+In our implementation of readers-writers behavior, readers could starve because writers have higher priority.
 This starvation is `OK' because it is allowed by design.
 However, the code suffers from another form of starvation for writer threads.
 This starvation has the same nature as we discussed for the producer-consumer implementation (the `where is my ice cream?' problem).
@@ -320,7 +366,6 @@ Namely, we use a \emph{take-a-number} system and make writers wait in a FIFO lin
     \end{verbatim}
 \end{multicols}
 \vspace{-2em}
-
 
 \subsection*{Seek and Destroy: the Search-Insert-Delete Problem}
 
