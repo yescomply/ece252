@@ -458,6 +458,56 @@
 	Conversely, the last reader only signals a waiting writer if there are any.
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{RWLock Syntax}
+
+	We can write our own writer-reader lock.
+
+	\begin{lstlisting}[language=C]
+rwlock_init( rwlock_t * rwlock )
+rwlock_destroy( rwlock_t * rwlock )
+rwlock_r_lock( rwlock_t * rwlock )
+rwlock_w_lock( rwlock_t * rwlock )
+rwlock_r_unlock( rwlock_t  *  rwlock )
+rwlock_w_unlock( rwlock_t  *  rwlock )
+	\end{lstlisting}
+
+	We can acquire a read lock, or a write lock.
+
+	Pretty self-explanatory, which is which and when you use what.
+
+	All functions take one argument: \texttt{rwlock}, the lock.
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Code Example}
+
+	\begin{center}
+		\begin{lstlisting}[language=C]
+rwlock_t rwlock;
+
+void init( ) {
+  rwlock_init( &rwlock );
+}
+
+void cleanup( ) {
+  rwlock_destroy( &rwlock );
+}
+
+void* writer( void* arg ) {
+  rwlock_w_lock( &rwlock );
+  write_data( arg );
+  rwlock_w_unlock( &rwlock );
+}
+
+void* reader( void* read ) {
+  rwlock_r_lock( &rwlock );
+  read_data( arg );
+  rwlock_r_unlock( &rwlock );
+}
+		\end{lstlisting}
+	\end{center}
+\end{frame}
 
 \begin{frame}[fragile]
 	\frametitle{Would This Work?}
