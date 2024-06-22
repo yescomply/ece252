@@ -171,15 +171,11 @@ Let's modify the solution so that writers have priority over readers. Giving wri
 
 Yikes! The complexity for the writer increased dramatically. The reader is not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader.
 
+\newpage
 \subsection*{Reader-Writer Implementation with Monitor}
 
 We next focus on implementing the reader-writer problem with monitor.
-For this, we introduce the following:
-\begin{itemize}
-    \item One mutex;
-    \item Two condition variables: \texttt{ok2write} and \texttt{ok2read}; and
-    \item Four variables: \texttt{ww} (\# of waiting writers), \texttt{wr} (\# of waiting readers), \texttt{aw} (\# of active writers), and \texttt{ar} (\# of active readers).
-\end{itemize}
+For this, we introduce the following: 1 mutex, 2 CVs: \texttt{ok2write} and \texttt{ok2read}, and 4 variables: \texttt{ww} (\# of waiting writers), \texttt{wr} (\# of waiting readers), \texttt{aw} (\# of active writers), and \texttt{ar} (\# of active readers).
 
 We will use the mutex for mutual exclusion (duh!).
 We will use \texttt{ok2write} for writers and \texttt{ok2read} for readers to wait on.
@@ -250,10 +246,11 @@ The reason for this is that the signals in line (13) of both reader and writer t
 To solve this, we could use \texttt{cond\_broadcast} instead.
 However, this implementation would be inefficient, as it wakes up all waiting threads (readers and writers) for potentially only one of them to continue.
 
-\susection*{RWLock}
+\newpage
 
 Using the pseudocode as above, we can implement a readers-writers lock.
-The type for our lock is rwlock_t, and the following functions are used alongside it:
+The type for our lock is \texttt{rwlock\_t} (see \texttt{wrlock.h} in code examples).
+And we have the following functions:
 
 	\begin{lstlisting}[language=C]
 rwlock_init( rwlock_t * rwlock )
@@ -311,6 +308,8 @@ This, however, is not the solution and could cause a deadlock (why?).
 
 Instead, to properly address the issue, we should take the same approach we took with the producer-consumer implementation.
 Namely, we use a \emph{take-a-number} system and make writers wait in a FIFO line:
+
+\newpage
 
 \begin{multicols}{2}
     \textbf{Writer}\vspace{-2em}
@@ -378,6 +377,8 @@ This is an extension of the readers-writers problem called the search-insert-del
 \textit{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time, and when the deleter is accessing the list, no inserters and no searchers may be accessing the list. Deleter threads call \texttt{void delete( void* to\_delete )} where the argument to the deleter thread is the element to be deleted. These most closely resemble writers in the readers-writers problem.
 
 It turns out we don't need to modify things too much to allow for this third kind of thread. We need to keep track of when there are ``no inserters'' and ``no searchers'' (some hints for our semaphores) and another mutex to go around the actual insertion... See the code implementation below.
+
+\newpage
 
 	{\scriptsize
 		\begin{multicols}{2}
