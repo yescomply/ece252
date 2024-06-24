@@ -223,28 +223,31 @@ pthread_mutex_destroy( pthread_mutex_t *mutex )
 \begin{frame}[fragile]
 	\frametitle{What Should I Do With This?}
 
-	\textbf{Waiting Thread}
-	\begin{verbatim}
+	{\small
+	\begin{multicols}{2}
+		\textbf{Waiting Thread}
+		\begin{verbatim}
 	lock( m )
 	/* critical section */
-	while( !is_condition_true() ) {
+	while !is_condition_true()
 	    cond_wait( m, c)
-	}
+	end while
 	/* rest of critical section */
 	unlock( m )
-	\end{verbatim}
-
-	\vspace{2em}
-
-	\textbf{Signaling Thread}
-	\begin{verbatim}
+		\end{verbatim}
+		\columnbreak
+		\textbf{Signaling Thread}
+		\begin{verbatim}
 	lock( m )
 	/* critical section */
-	/* if is_condition_true() is now true */
-	cond_signal( c )
+	if is_condition_true()
+	   cond_signal( c )
+	end if
 	/* rest of critical section */
 	unlock( m )
-	\end{verbatim}
+
+		\end{verbatim}
+	\end{multicols}}
 
 \end{frame}
 
@@ -337,33 +340,49 @@ pthread_mutex_destroy( pthread_mutex_t *mutex )
 	Consider the barrier pattern from earlier.
 
 	There are $n$ threads, and we wait for the last one to arrive.
-		{\scriptsize
+		{\small
 			\begin{multicols}{2}
+				\textbf{With Semaphores}
 				\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count == n
-	4.     post( barrier )
-	5. end if
-	6. post( mutex )
-	7. wait( barrier )
-	8. post( barrier )
+	 1. wait( mutex )
+	 2. count++
+	 3. if count == n
+	 4.    post( barrier )
+	 5. end if
+	 6. post( mutex )
+	 7. wait( barrier )
+	 8. post( barrier )
+	 9. /* critical section */
+	10. wait( mutex )
+	11. counter--
+	12. if counter == 0
+	13.    wait( barrier )
+	14. end if
+	15. post( mutex )
   				\end{verbatim}
 				\columnbreak
+				\textbf{With Monitor}\vspace{-2em}
 				\begin{verbatim}
-	1. lock( mutex )
-	2. count++
-	3. if count == n
-	4.     cond_broadcast( barrier )
-	5. else while count < n
-	6.     cond_wait( barrier, mutex )
-	7. end if
-	8. unlock( mutex )
+	 1. lock( mutex )
+	 2. count++
+	 3. if count == n
+	 4.    cond_broadcast( barrier )
+	 5. end if
+	 6  while count < n
+	 7.    cond_wait( barrier, mutex )
+	 8. end while
+	 9. unlock( mutex )
+	10. /* critical section */
+	11. lock( mutex )
+	12. counter--
+	13. unlock( mutex )
+
+
   				\end{verbatim}
 			\end{multicols}
 		}
 
-	The \texttt{cond\_wait} takes place before \texttt{unlock( mutex )}. That looks strange, doesn't it?
+%	The \texttt{cond\_wait} takes place before \texttt{unlock( mutex )}. That looks strange, doesn't it?
 
 \end{frame}
 
@@ -412,11 +431,16 @@ void barrier( ) {
   count++;
   if ( count == NUM_THREADS ) {
     pthread_cond_broadcast( &cv );
-  } else {
-    while ( count < NUM_THREADS ) {
-      pthread_cond_wait( &cv, &lock );
-    }
   }
+  while ( count < NUM_THREADS ) {
+    pthread_cond_wait( &cv, &lock );
+  }
+  pthread_mutex_unlock( &lock );
+}
+
+void exit_barrier( ) {
+  pthread_mutex_lock( &lock );
+  count--;
   pthread_mutex_unlock( &lock );
 }
 \end{lstlisting}

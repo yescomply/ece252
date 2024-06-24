@@ -93,23 +93,25 @@ This operation is similar to \texttt{cond\_signal} but wakes up all waiting thre
 Given these three operations, a proper usage of a CV is:
 
 \begin{multicols}{2}
-	\textbf{Waiting Thread}\vspace{-2em}
+	\textbf{Waiting Thread}
 	\begin{verbatim}
 	lock( m )
 	/* critical section */
-	while( !is_condition_true() ) {
+	while !is_condition_true()
 	    cond_wait( m, c)
-	}
+	end while
 	/* rest of critical section */
 	unlock( m )
+
 	\end{verbatim}
 	\columnbreak
-	\textbf{Signaling Thread}
+	\textbf{Signaling Thread}\vspace{-2em}
 	\begin{verbatim}
 	lock( m )
 	/* critical section */
-	/* if is_condition_true() is now true */
-	cond_signal( c )
+	if is_condition_true()
+	   cond_signal( c )
+	end if
 	/* rest of critical section */
 	unlock( m )
   \end{verbatim}
@@ -147,28 +149,46 @@ For example, Java User Manual reads:
 
 The CV can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads, and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the CV on the right:
 
+\newpage
+
 \begin{multicols}{2}
+	\textbf{With Semaphores}
 	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count == n
-	4.     post( barrier )
-	5. end if
-	6. post( mutex )
-	7. wait( barrier )
-	8. post( barrier )
-  \end{verbatim}
+ 1. wait( mutex )
+ 2. count++
+ 3. if count == n
+ 4.    post( barrier )
+ 5. end if
+ 6. post( mutex )
+ 7. wait( barrier )
+ 8. post( barrier )
+ 9. /* critical section */
+10. wait( mutex )
+11. counter--
+12. if counter == 0
+13.    wait( barrier )
+14. end if
+15. post( mutex )
+	\end{verbatim}
 	\columnbreak
+	\textbf{With Monitor}\vspace{-2em}
 	\begin{verbatim}
-	1. lock( mutex )
-	2. count++
-	3. if count == n
-	4.     cond_broadcast( barrier )
-	5. else while count < n
-	6.     cond_wait( barrier, mutex )
-	7. end if
-	8. unlock( mutex )
-  \end{verbatim}
+ 1. lock( mutex )
+ 2. count++
+ 3. if count == n
+ 4.    cond_broadcast( barrier )
+ 5. end if
+ 6  while count < n
+ 7.    cond_wait( barrier, mutex )
+ 8. end while
+ 9. unlock( mutex )
+10. /* critical section */
+11. lock( mutex )
+12. counter--
+13. unlock( mutex )
+
+
+	\end{verbatim}
 \end{multicols}
 
 Note again that the \texttt{cond\_wait} takes place before \texttt{unlock( mutex )}. What's important to remember is that we unlock the \text{mutex} when we wait on the CV, so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
@@ -191,21 +211,28 @@ In addition to the expected \texttt{pthread\_cond\_signal} function that signals
 
 Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be.
 
+\newpage
+
 \begin{lstlisting}[language=C]
 int count;
 pthread_mutex_t lock;
 pthread_cond_t cv;
 
-void barrier( ) {
+void enter_barrier( ) {
   pthread_mutex_lock( &lock );
   count++;
   if ( count == NUM_THREADS ) {
     pthread_cond_broadcast( &cv );
-  } else {
-    while ( count < NUM_THREADS ) {
-      pthread_cond_wait( &cv, &lock );
-    }
   }
+  while ( count < NUM_THREADS ) {
+    pthread_cond_wait( &cv, &lock );
+  }
+  pthread_mutex_unlock( &lock );
+}
+
+void exit_barrier( ) {
+  pthread_mutex_lock( &lock );
+  count--;
   pthread_mutex_unlock( &lock );
 }
 \end{lstlisting}
