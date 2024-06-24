@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 20 --- Advanced Concurrency Problems }{\term}{Jeff Zarnett}
+\lecture{ 20 --- Advanced Concurrency Problems }{\term}{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi}
 
 \section*{Get a Pizza This!}
 Let's consider a more advanced concurrency problem. In~\cite{lbs} it's called the ``Cigarette Smokers Problem'', but smoking is bad for you so it's going to be the ``Pizza Makers Problem''. Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
@@ -198,14 +198,14 @@ post( mutex )
 
 Now instead of setting the variables to true and false, the variables tracking the ingredients are incremented and decremented. Otherwise not much has changed. This pattern is referred to as the ``scoreboard''~\cite{lbs} -- there are variables keeping track of the state of the system which are viewable from all threads. As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
 
-\section*{The Barbershop Problem}
-Consider the ``Barbershop Problem'', originally proposed by Dijkstra. A variant of this appears in~\cite{osc}. A barbershop is a place where customers get their hair cut. A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
+\section*{The Sleepy Barbershop Problem}
+Consider the ``Sleepy Barbershop Problem'', originally proposed by Dijkstra. A variant of this appears in~\cite{osc}. A barbershop is a place where customers get their hair cut. A barbershop consists of a waiting area with $n$ seats, and a barber chair.
 
-If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the barber is asleep, the customer wakes up the barber.
+If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all seats are occupied, then the customer leaves the shop. If the barber is busy, but seats are available, then the customer sits in one of the free seats. If the barber is asleep, the customer wakes up the barber.
 
 Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. If the shop is full, the customer should \texttt{return} (exit/leave). The barber thread will call \texttt{cut\_hair}. The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. You can assume that external forces cause customers to appear and the barber to keep working (so you do not need to write any loops). Assume \texttt{n} is initialized to an appropriate value.
 
-We need an integer counter for customers waiting called \texttt{customers} that starts at 0. We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
+We need an integer counter for customers waiting called \texttt{customers} that starts at 0. We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). Finally, two semaphores, \texttt{customer} and \texttt{chair} that both start at 0.
 
 As for the solution:
 \begin{multicols}{2}
@@ -213,31 +213,33 @@ As for the solution:
 	\begin{lstlisting}
 wait( mutex )
 if customers == n+1
-    signal( mutex )
+    post( mutex )
     return
 end if
 customers++
-signal( mutex )
+post( mutex )
 
-signal( customer )
-wait( barber )
+post( customer )
+wait( chair )
 get_hair_cut()
 
 wait( mutex )
 customers--
-signal( mutex )
+post( mutex )
 \end{lstlisting}
 	\columnbreak
 	\textbf{Barber}
 	\begin{lstlisting}
-wait( customer )
-signal( barber )
-cut_hair()
+while true
+   wait( customer )
+   post( chair )
+   cut_hair()
+end while
   \end{lstlisting}
 \end{multicols}
 
 
-The barber code is much simpler, so let's start there. The barber waits for there to be a customer. When there is one, the barber calls the customer forward by signalling on \texttt{barber}, and then cuts hair. Simple enough.
+The barber code is much simpler, so let's start there. The barber waits for there to be a customer. When there is one, the barber calls the customer forward by signalling on \texttt{chair}, and then cuts hair. Simple enough.
 
 As for the customer, \texttt{customers} is shared data, so its access should be protected by \texttt{mutex}. If we find that the number of customers is already $n$ -- that is, the waiting area is full, the customer should leave. But not without unlocking \texttt{mutex}! If the customer forgot to do that then no more customers could enter. That's a problem. Otherwise the count of customers is increased and the customer signals the semaphore \texttt{customer}. This will wake up the barber, if the barber is sleeping, but also indicates the number of customers waiting. Then the customer must wait for the barber. When the customer gets called forward by the barber, the customer can get their hair cut. Finally, when leaving, the customer decrements the number of customers counter.
 
@@ -251,7 +253,7 @@ This is actually a good lesson for services in general. They have a certain capa
 
 
 \subsection*{Escape from Hoth and Chemistry: Building H$_{2}$O}
-Where we want to go with this is the building H$_{2}$O problem. But for right now, we need to take a slight detour to the ice planet of Hoth! The chemistry problem is somewhat complicated, so the best way to approach it is by starting with an easier variant and then moving on.
+Where we want to go with this is the ``building H$_{2}$O'' problem. But for right now, we need to take a slight detour to the ice planet of Hoth! The chemistry problem is somewhat complicated, so the best way to approach it is by starting with an easier variant and then moving on.
 
 The Rebel Alliance is trying desperately to escape the ice planet Hoth before Darth Vader can put an end to the rebellion once and for all. The rebels want to evacuate the base with transports; transports are escorted by a pair of X-Wing fighters. Transports have no hope of surviving if they are not escorted, so the fighters must stay with their assigned transport. Normally, central command would tell the fighters and transports when to launch, but the base is under assault. Thus, the transports and fighters must organize themselves. Only one group of fighters and transports can launch at a time. In this problem,  a pair of fighters is a single unit.
 
@@ -259,10 +261,11 @@ If a transport is ready, but fighters are not, the transport has to wait for the
 
 Assume there are an appropriate number of fighters and transports so that nobody is left behind. The setup and creation of each kind of thread is something we will assume is handled externally and we can just focus on the behaviour of each kind of thread.
 
-We will need an integer counter for the number of ready fighters, called \texttt{fighters}, an integer counter for the number of ready transports called \texttt{transports}, and three semaphores: \texttt{mutex}, \texttt{fighter\_queue}, \texttt{transport\_queue}.
+We will need an integer counter for the number of ready fighters, called \texttt{fighters}, and an integer counter for the number of ready transports, called \texttt{transports}.
+We will also need five semaphores: \texttt{mutex}, \texttt{fighter\_queue}, \texttt{transport\_queue}, \texttt{fighter\_launched}, and \texttt{transport\_launched}.
 
 
-Initial values: \texttt{mutex = 1} and \texttt{fighter\_queue = 0} and \texttt{transport\_queue = 0}.
+Semaphores' initial values: \texttt{mutex = 1}, \texttt{fighter\_queue = 0}, \texttt{transport\_queue = 0}, \texttt{fighter\_launched = 0}, and \texttt{transport\_launched = 0}.
 
 \begin{multicols}{2}
 \textbf{Fighters}\vspace{-2em}
@@ -275,23 +278,27 @@ else
   fighters++
   post( mutex )
   wait( fighter_queue )
-end if  
+end if
 launch()
+post( fighter_launched )
+wait( transport_launched )
+
 \end{verbatim}
 \columnbreak
-
 \textbf{Transport}\vspace{-1em}
 \begin{verbatim}
 wait( mutex )
 if fighters > 0
   fighters--
-  signal( fighter_queue )
+  post( fighter_queue )
 else
   transports++
   post( mutex )
   wait( transport_queue )
 end if
 launch()
+post( transport_launched )
+wait( fighter_launched )
 post( mutex )
 \end{verbatim}
 \end{multicols}
@@ -311,7 +318,7 @@ There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you
 
 To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions.
 
-In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. The code for the creation of those two types of threads is not shown for space reasons. The reusable two-phase barrier from earlier has also been converted into C code.
+In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. The code for the creation of those two types of threads is not shown for space reasons. The reusable barrier from earlier has also been converted into C code.
 
 The oxygen queue and hydrogen queue start as ``locked'' so we'll only signal the threads when they are going to proceed. Before that we have a scoreboard pattern, where threads take a look at the state of the system and decide what to do.
 

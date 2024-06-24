@@ -2,10 +2,10 @@
 
 \title{Lecture 20 --- Advanced Concurrency Problems }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -414,13 +414,13 @@ post( mutex )
 \end{frame}
 
 \begin{frame}
-	\frametitle{The Barbershop Problem}
+	\frametitle{The Sleepy Barbershop Problem}
 
-	Consider the ``Barbershop Problem'', originally proposed by Dijkstra.
+	Consider the ``Sleepy Barbershop Problem'', originally proposed by Dijkstra.
 
 	A barbershop is a place where customers get their hair cut.
 
-	A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
+	A barbershop consists of a waiting area with $n$ seats, and a barber chair.
 
 \end{frame}
 
@@ -430,9 +430,9 @@ post( mutex )
 
 	If there are no customers to be served, the barber goes to sleep.
 
-	If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop.
+	If a customer enters the barbershop and all seats are occupied, then the customer leaves the shop.
 
-	If the barber is busy, but chairs are available, then the customer sits in one of the free chairs.
+	If the barber is busy, but seats are available, then the customer sits in one of the free seats.
 
 	If the barber is asleep, the customer wakes up the barber.
 
@@ -462,7 +462,7 @@ post( mutex )
 
 	We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1).
 
-	Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
+	Finally, two semaphores, \texttt{customer} and \texttt{chair} that both start at 0.
 
 	Let's write down some outline of the barber and customer code...
 
@@ -477,26 +477,28 @@ post( mutex )
 		\begin{lstlisting}
 wait( mutex )
 if customers == n+1
-    signal( mutex )
+    post( mutex )
     return
 end if
 customers++
-signal( mutex )
+post( mutex )
 
-signal( customer )
-wait( barber )
+post( customer )
+wait( chair )
 get_hair_cut()
 
 wait( mutex )
 customers--
-signal( mutex )
+post( mutex )
 \end{lstlisting}
 		\columnbreak
 		\textbf{Barber}
 		\begin{lstlisting}
-wait( customer )
-signal( barber )
-cut_hair()
+while true
+   wait( customer )
+   post( chair )
+   cut_hair()
+end while
   \end{lstlisting}
 	\end{multicols}
 
@@ -590,10 +592,9 @@ The setup and creation of each kind of thread is something we will assume is han
 We will need:
 
 \begin{itemize}
-\item an integer counter for the number of ready fighters, called \texttt{fighters}.
-
-\item an integer counter for the number of ready transports called \texttt{transports}, and 
-\item three semaphores: \texttt{mutex}, \texttt{fighter\_queue}, \texttt{transport\_queue}.
+\item 1 integer counter for the number of ready fighters, called \texttt{fighters}.
+\item 1 integer counter for the number of ready transports, called \texttt{transports}.
+\item 5 semaphores: \texttt{mutex}, \texttt{fighter\_queue}, \texttt{transport\_queue}, \texttt{fighter\_launched}, and \texttt{transport\_launched}.
 \end{itemize}
 
 
@@ -603,10 +604,11 @@ We will need:
 \begin{frame}[fragile]
 \frametitle{Echo Base...}
 
-Initial values: \texttt{mutex = 1} and \texttt{fighter\_queue = 0} and \texttt{transport\_queue = 0}.
+Initialization: \texttt{mutex = 1}, \texttt{fighter\_queue = 0}, \texttt{transport\_queue = 0}, \texttt{fighter\_launched = 0}, and \texttt{transport\_launched = 0}.
 
 \begin{multicols}{2}
-\textbf{Fighters}\vspace{-2em}
+{\small
+\textbf{Fighters}
 \begin{verbatim}
 wait( mutex )
 if transports > 0
@@ -618,23 +620,26 @@ else
   wait( fighter_queue )
 end if  
 launch()
+post( fighter_launched )
+wait( transport_launched )
 \end{verbatim}
 \columnbreak
-
-\textbf{Transport}\vspace{-1em}
+\textbf{Transport}
 \begin{verbatim}
 wait( mutex )
 if fighters > 0
   fighters--
-  signal( fighter_queue )
+  post( fighter_queue )
 else
   transports++
   post( mutex )
   wait( transport_queue )
 end if
 launch()
+post( transport_launched )
+wait( fighter_launched )
 post( mutex )
-\end{verbatim}
+\end{verbatim}}
 \end{multicols}
 
 Is there a risk of deadlock here? How about starvation?
@@ -675,7 +680,7 @@ Is there a risk of deadlock here? How about starvation?
 
 	The code for the creation of those two types of threads is not shown.
 
-	The reusable two-phase barrier from earlier has also been converted into C code.
+	The reusable barrier from earlier has also been converted into C code.
 
 	The oxygen queue and hydrogen queue start as ``locked''.
 
