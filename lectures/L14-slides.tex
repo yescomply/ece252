@@ -834,6 +834,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 \begin{frame}[fragile]
 	\frametitle{Reusable Barrier Solution 3}
 	\vspace{-0.5em}
+	{\small
 	\textbf{Thread \textit{K}}\vspace{-0.5em}
 	\begin{verbatim}
 	 1. wait( mutex )
@@ -855,7 +856,7 @@ And adding thread D would mean changing A, B, C as well... Not ideal...
 	17. post( mutex )
 	18. wait( turnstile2 )
 	19. post( turnstile2 )
-  	\end{verbatim}
+  	\end{verbatim}}
 	\vspace{-2em}
 
 
