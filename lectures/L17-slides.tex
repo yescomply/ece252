@@ -3,9 +3,10 @@
 \title{Lecture 17 --- Deadlock }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -66,7 +67,6 @@
 \end{frame}
 
 
-
 \begin{frame}
 	\frametitle{The Dining Philosophers Problem}
 
@@ -74,7 +74,21 @@
 
 	The problem can have $n$ philosophers, but problem is typically described as 5.
 
-	These five smart individuals spend their lives thinking, but every so often, they need to eat. They share a table, each having his or her own chair.
+	These five smart individuals spend their lives thinking, but every so often, they need to eat. They share a table, each having their own chair.
+
+	In the centre of the table is a bowl of rice, \& it is laid with 5 single chopsticks.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{The Dining Philosophers Problem}
+
+	The dining philosophers problem was also proposed by Dijkstra in 1965.
+
+	The problem can have $n$ \alert{\sout{philosophers} politicians}, but problem is typically described as 5.
+
+	These five \alert{\sout{smart}} individuals spend their lives \alert{\sout{thinking} lying}, but every so often, they need to eat. They share a table, each having their own chair.
 
 	In the centre of the table is a bowl of rice, \& it is laid with 5 single chopsticks.
 
@@ -92,11 +106,11 @@
 \begin{frame}
 	\frametitle{Dinner Time}
 
-	When a philosopher wishes to eat, she sits down at her designated chair, and attempts to pick up the two chopsticks that are nearest.
+	When politicians wish to eat, they sit down at their designated chair, and attempts to pick up the two chopsticks that are nearest.
 
-	Philosophers are polite and therefore do not grab a chopstick out of the hands of a colleague.
+	Politicians are polite and therefore do not grab a chopstick out of the hands of a colleague.
 
-	When a philosopher has both chopsticks, she may eat rice, and when she is finished, she puts down the chopsticks and goes back to thinking.
+	When a politician has both chopsticks, they may eat rice, and when they are finished, they puts down the chopsticks and goes back to lying.
 
 
 \end{frame}
@@ -108,13 +122,13 @@
 
 	Because only one person can be in possession of a chopstick at a time, each chopstick may be represented by a binary semaphore.
 
-	When the philosopher sits down he attempts to acquire the left chopstick, then the right, eats, and puts the chopsticks down.
+	When politicians sit down, they attempt to acquire the left chopstick, then the right, eat, and put the chopsticks down.
 
-	This works fine, until all philosophers sit down at the same time. Each grabs the chopstick to his or her left.
+	This works fine, until all politicians sit down at the same time. Each grabs the chopstick to their left.
 
-	None of them are able to acquire the chopstick to his or her right (because someone has already picked it up).
+	None of them are able to acquire the chopstick to their right (because someone has already picked it up).
 
-	None of the philosophers can eat; they are all stuck. Deadlock.
+	None of the politicians can eat; they are all stuck. Deadlock.
 
 \end{frame}
 
@@ -127,11 +141,11 @@
 
 	This example makes it more clear why we call a situation where a thread never gets to run ``starvation''.
 
-	If a philosopher is never able to get both chopsticks, they won't eat.
+	If a politician is never able to get both chopsticks, they won't eat.
 
 	Though I am not an expert on biology, I have it on good authority that people who do not eat anything end up eventually starving to death.
 
-	Even philosophers.
+	Specially politicians.
 
 \end{frame}
 
@@ -140,7 +154,7 @@
 
 	One thing that would guarantee that this problem does not occur is to protect the table with a binary semaphore.
 
-	This would allow exactly one philosopher at a time to eat, but at the very least, deadlock and starvation would be avoided.
+	This would allow exactly one politician at a time to eat, but at the very least, deadlock and starvation would be avoided.
 
 	Although this works, it is a suboptimal solution.
 
@@ -152,11 +166,11 @@
 \begin{frame}
 	\frametitle{No, the Pigeons are not for Eating}
 
-	What if we limit the number of philosophers at the table concurrently to four?
+	What if we limit the number of politicians at the table concurrently to four?
 
 	The pigeonhole principle applies here: if there are $k$ pigeonholes and more than $k$ pigeons, at least one pigeonhole must have at least two pigeons.
 
-	Thus, at least one of the four philosophers can get two chopsticks.
+	Thus, at least one of the four politicians can get two chopsticks.
 
 	Implementation is easy: a general semaphore with a max and initial value of 4.
 
@@ -169,7 +183,7 @@
 		\includegraphics[width=0.4\textwidth]{images/leftorium.jpg}
 	\end{center}
 
-	The problem above occurs because every philosopher tries to pick up the left chopstick first.
+	The problem above occurs because every politician tries to pick up the left chopstick first.
 
 	If some of them try to pick up the left and some pick up the right first, then deadlock will not happen.
 
@@ -272,6 +286,7 @@
 	 3. [critical section]
 	 4. signal( b )
 	 5. signal( a )
+
   \end{verbatim}
 	\end{multicols}
 
@@ -484,28 +499,26 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Two-Phase Locking}
+	\frametitle{Try Locking All Resources}
 	
 	\begin{center}
 	\includegraphics[width=0.4\textwidth]{images/cookiedown.jpg}
 	\end{center}
 
-	Another idea that might work is \alert{two-phase locking}.
-
-	A process attempts to lock a group of resources at once.
+	Another idea that might work is for a process attempts to lock a group of resources at once.
 
 	If it does not get everything it needs, it releases the locks it got and tries again.
 
-	Thus a process does not wait while holding resources.
+	Thus, a process does not wait while holding resources.
 
-	If a philosopher picks up a chopstick but is unable to acquire a second, she puts down the chopstick she has picked up and tries again.
+	If politicians pick up a chopstick but are unable to acquire a second, they put down the chopstick they have picked up and try again.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Two-Phase Locking}
+	\frametitle{Try Locking All Resources}
 
-	Two phase locking is not applicable to our current model for semaphores.
+	This is not applicable to our current model for semaphores.
 
 	There is no way to know the value of the semaphore and the operating system will block a process on a \texttt{wait} if some other thread is in the critical region.
 
@@ -524,11 +537,9 @@
 	Fortunately, we know of some routines that do just this: the \texttt{trylock} functions that were mentioned earlier but not expanded upon:
 	\begin{lstlisting}[language=C]
 int pthread_mutex_trylock( pthread_mutex_t * mutex )
-int pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
-int pthread_rwlock_trywrlock( pthread_rwlock_t  * rwlock )
-\end{lstlisting}
+	\end{lstlisting}
 
-	These functions return an integer and it's extremely important to check and see if the return code is 0.
+	It returns an integer, and it's extremely important to check and see if the return code is 0.
 
 	That is the only way to know if the lock was acquired.
 
@@ -539,7 +550,7 @@ int pthread_rwlock_trywrlock( pthread_rwlock_t  * rwlock )
 	\frametitle{Have You Tried Trying?}
 
 	It should be possible to reason about this solution and demonstrate that:\\
-	\quad (1) a philosopher can only eat if they have both chopsticks, and\\
+	\quad (1) a politician can only eat if they have both chopsticks, and\\
 	\quad (2) deadlock does not occur.
 
 	\begin{lstlisting}[language=C]
