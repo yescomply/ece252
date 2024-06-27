@@ -51,7 +51,11 @@ void* producer( void* arg ) {
         fifo_pop(&p_fifo);
         next_p_turn++;
         pthread_cond_t *c_fifo_head = (pthread_cond_t*) fifo_head(&c_fifo);
-        if(c_fifo_head != NULL) {
+        pthread_cond_t *p_fifo_head = (pthread_cond_t*) fifo_head(&p_fifo);
+        if(count != BUFFER_SIZE && p_fifo_head != NULL) {
+	    pthread_cond_signal(p_fifo_head);
+	}
+	if(c_fifo_head != NULL) {
             pthread_cond_signal(c_fifo_head);
         }
         pthread_mutex_unlock( &mutex );
@@ -76,6 +80,10 @@ void* consumer( void* arg ) {
         fifo_pop(&c_fifo);
         next_c_turn++;
         pthread_cond_t *p_fifo_head = (pthread_cond_t*) fifo_head(&p_fifo);
+        pthread_cond_t *c_fifo_head = (pthread_cond_t*) fifo_head(&c_fifo);
+        if(count != 0 && c_fifo_head != NULL) {
+            pthread_cond_signal(c_fifo_head);
+        }
         if(p_fifo_head != NULL) {
             pthread_cond_signal(p_fifo_head);
         }
