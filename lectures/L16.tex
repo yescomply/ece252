@@ -187,7 +187,7 @@ And the four variables are used to track the state of waiting/active readers and
  1. lock( mutex )
  2. while aw + ar > 0
  3.     ww++
- 4.     cond_wait( ok2write )
+ 4.     cond_wait(ok2write, mutex)
  5.     ww--
  6. end while
  7. aw++
@@ -208,7 +208,7 @@ And the four variables are used to track the state of waiting/active readers and
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( ok2read )
+ 4.    cond_wait(ok2read, mutex)
  5.    wr--
  6. end while
  7. ar++
@@ -320,7 +320,7 @@ Namely, we use a \emph{take-a-number} system and make writers wait in a FIFO lin
  4. while aw + ar > 0 ||
           next_w_turn < my_turn
  5.     ww++
- 6.     cond_wait( my_ok2write )
+ 6.     cond_wait(my_ok2write, mutex)
  7.     ww--
  8. end while
  9. aw++
@@ -343,7 +343,7 @@ Namely, we use a \emph{take-a-number} system and make writers wait in a FIFO lin
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( ok2read )
+ 4.    cond_wait(ok2read, mutex)
  5.    wr--
  6. end while
  7. ar++

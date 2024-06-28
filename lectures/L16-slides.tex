@@ -401,7 +401,7 @@
  1. lock( mutex )
  2. while aw + ar > 0
  3.     ww++
- 4.     cond_wait( ok2write )
+ 4.     cond_wait(ok2write, mutex)
  5.     ww--
  6. end while
  7. aw++
@@ -422,7 +422,7 @@
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( ok2read )
+ 4.    cond_wait(ok2read, mutex)
  5.    wr--
  6. end while
  7. ar++
@@ -519,7 +519,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ar > 0
  3.     ww++
- 4.     cond_wait( ok2write )
+ 4.     cond_wait(ok2write, mutex)
  5.     ww--
  6. end while
  7. aw++
@@ -540,7 +540,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( ok2read )
+ 4.    cond_wait(ok2read, mutex)
  5.    wr--
  6. end while
  7. ar++
@@ -578,7 +578,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ar > 0
  3.     ww++
- 4.     cond_wait( \textcolor{red}{ok2go} )
+ 4.     cond_wait(\textcolor{red}{ok2go}, mutex)
  5.     ww--
  6. end while
  7. aw++
@@ -599,7 +599,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( \textcolor{red}{ok2go} )
+ 4.    cond_wait(\textcolor{red}{ok2go}, mutex)
  5.    wr--
  6. end while
  7. ar++
@@ -629,7 +629,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ar > 0
  3.     ww++
- 4.     cond_wait( \textcolor{red}{ok2go} )
+ 4.     cond_wait(\textcolor{red}{ok2go}, mutex)
  5.     ww--
  6. end while
  7. aw++
@@ -650,7 +650,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( \textcolor{red}{ok2go} )
+ 4.    cond_wait(\textcolor{red}{ok2go}, mutex)
  5.    wr--
  6. end while
  7. ar++
@@ -706,7 +706,7 @@ void* reader( void* read ) {
  2. while aw + ar + ww > 0
 }
  3.     ww++
- 4.     cond_wait( ok2write )
+ 4.     cond_wait(ok2write, mutex)
  5.     ww--
  6. end while
  7. aw++
@@ -727,7 +727,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( ok2read )
+ 4.    cond_wait(ok2read, mutex)
  5.    wr--
  6. end while
  7. ar++
@@ -777,7 +777,7 @@ void* reader( void* read ) {
 }
  5.     ww++
 \textcolor{red}{
- 6.     cond_wait( my_ok2write )
+ 6.     cond_wait(my_ok2write, mutex)
 }
  7.     ww--
  8. end while
@@ -807,7 +807,7 @@ void* reader( void* read ) {
  1. lock( mutex )
  2. while aw + ww > 0
  3.    wr++
- 4.    cond_wait( ok2read )
+ 4.    cond_wait(ok2read, mutex)
  5.    wr--
  6. end while
  7. ar++
