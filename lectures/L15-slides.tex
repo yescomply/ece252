@@ -593,8 +593,73 @@ int main( int argc, char** argv ) {
 
 \end{frame}
 
+
 \begin{frame}
 	\frametitle{Analysis of Solution 3}
+	This solves the problem with waking up a `wrong' thread.
+	However, it still has a problem.
+
+	This problem involves threads that wait because it's not their turn, not because the buffer is full or empty.
+
+	Such threads should be signaled by a thread of their own type, because there might be no signals coming for threads of the other type.
+
+	If the buffer is not empty, a consumer thread leaving the critical section should signal other consumer threads that are waiting.
+
+	Similarly, if the buffer is not full, a producer thread leaving the critical section should signal other producer threads that are waiting.
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Solution 4}
+
+	\begin{multicols}{2}
+		\small
+		\textbf{Producer}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. [produce item]
+ 2. lock( mutex )
+ 3. my_turn = p_turn++
+ 4. while count == BUFF_SIZE ||
+          next_p_turn < my_turn
+ 5.    cond_wait( full, mutex )
+ 6. end while
+ 7. [add item to buffer]
+ 8. count++
+ 9. next_p_turn++
+\textcolor{red}{10. if count != BUFF_SIZE}
+\textcolor{red}{11.    cond_broadcast( full )}
+\textcolor{red}{12. end if}
+13. cond_broadcast( empty )
+14. unlock( mutex )
+    	\end{Verbatim}
+		\columnbreak
+		\textbf{Consumer}\vspace{-2em}
+		\begin{Verbatim}[commandchars=\\\{\}]
+ 1. lock( mutex )
+ 2. my_turn = c_turn++
+ 3. while count == 0 ||
+          next_c_turn < my_turn
+ 4.    cond_wait( empty, mutex )
+ 5. end while
+ 6. [remove item from buffer]
+ 7. count--
+ 8. next_c_turn++
+\textcolor{red}{ 9. if count != 0}
+\textcolor{red}{10.    cond_broadcast( empty )}
+\textcolor{red}{11. end if}
+12. cond_broadcast( full )
+13. unlock( mutex )
+14. [consume item]
+		\end{Verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+	Does this work?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Analysis of Solution 4}
 	This solution works.
 
 	However, it is very \alert{inefficient} in the sense that we wake everyone up, even though only one of them is allowed to proceed.
@@ -616,7 +681,7 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Solution 4}
+	\frametitle{Solution 5}
 
 	\begin{multicols}{2}
 		\footnotesize
@@ -625,64 +690,49 @@ int main( int argc, char** argv ) {
  1. [produce item]
  2. lock( mutex )
  3. my_turn = p_turn++
-\textcolor{red}{
- 4. fifo_push( p_fifo, my_full )
-}
+\textcolor{red}{ 4. fifo_push( p_fifo, my_full )}
  5. while count == BUFF_SIZE ||
           next_p_turn < my_turn
-\textcolor{red}{
- 6.    cond_wait( my_full, mutex )
-}
+\textcolor{red}{ 6.    cond_wait( my_full, mutex )}
  7. end while
  8. [add item to buffer]
  9. count++
 10. next_p_turn++
-\textcolor{red}{
-11. fifo_pop( p_fifo )
-}
-\textcolor{red}{
-12. if !fifo_is_empty( c_fifo )
-}
-\textcolor{red}{
-13.    cond_signal(fifo_head(c_fifo))
-}
-14. end if
-15. unlock( mutex )
+\textcolor{red}{11. fifo_pop( p_fifo )}
+\textcolor{red}{12. if count != BUFF_SIZE &&}
+\textcolor{red}{          !fifo_is_empty( p_fifo )}
+\textcolor{red}{13.    cond_signal(fifo_head(p_fifo)}
+\textcolor{red}{14. end if}
+\textcolor{red}{15. if !fifo_is_empty( c_fifo )}
+\textcolor{red}{16.    cond_signal(fifo_head(c_fifo))}
+17. end if
+18. unlock( mutex )
 		\end{Verbatim}
 		\columnbreak
 		\textbf{Consumer}\vspace{-2em}
 		\begin{Verbatim}[commandchars=\\\{\}]
  1. lock( mutex )
  2. my_turn = c_turn++
-\textcolor{red}{
- 3. fifo_push( c_fifo, my_empty )
-}
+\textcolor{red}{ 3. fifo_push( c_fifo, my_empty )}
  4. while count == 0 ||
           next_c_turn < my_turn
-\textcolor{red}{
- 5.    cond_wait( my_empty, mutex )
-}
+\textcolor{red}{ 5.    cond_wait( my_empty, mutex )}
  6. end while
  7. [remove item from buffer]
  8. count--
  9. next_c_turn++
-\textcolor{red}{
-10. fifo_pop( c_fifo )
-}
-\textcolor{red}{
-11. if !fifo_is_empty( p_fifo )
-}
-\textcolor{red}{
-12.    cond_signal(fifo_head(p_fifo))
-}
-13. end if
-14. unlock( mutex )
-15. [consume item]
+\textcolor{red}{10. fifo_pop( c_fifo )}
+\textcolor{red}{11. if count != 0 &&}
+\textcolor{red}{          !fifo_is_empty( c_fifo )}
+\textcolor{red}{12.    cond_signal(fifo_head(c_fifo)}
+\textcolor{red}{13. end if}
+\textcolor{red}{14. if !fifo_is_empty( p_fifo )}
+\textcolor{red}{15.    cond_signal(fifo_head(p_fifo))}
+16. end if
+17. unlock( mutex )
+18. [consume item]
 		\end{Verbatim}
 	\end{multicols}
-	\vspace{-2em}
-
-	Are we finally there?
 \end{frame}
 
 \end{document}
