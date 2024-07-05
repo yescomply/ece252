@@ -2,10 +2,10 @@
 
 \title{Lecture 19 --- Deadlock Detection \& Recovery }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -435,81 +435,6 @@ One way to implement this is via a watchdog timer.
 
 \end{frame}
 
-
-\begin{frame}
-	\frametitle{Next Idea: Back we Go...}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/bttf.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Time Travel}
-
-	\alert{Rollback}: returning the state of a process to a saved state from an earlier time.
-
-	There must be a saved state that was created in advance of a problem. \\
-	\quad Otherwise there is no state to roll back to!
-
-	The saved state is called a \alert{checkpoint} and the act of creating and saving a checkpoint is called \alert{checkpointing}.
-
-	Checkpoints may be created periodically or before beginning a particular operation that requires a lot of resources.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Time Travel}
-
-	A checkpoint contains the memory image, including the call stack, and resource state of a process.
-
-	It is written to disk and will usually persist as long as the process executes.
-
-	You might already be somewhat familiar with the concept of rollbacks if you have used version control software like Subversion (\texttt{svn}) or Git (\texttt{git}).
-
-	Rollbacks are also common in databases.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Time Travel}
-
-	Unfortunately, rollback does not always succeed.
-
-	Sometimes moving the process back to an earlier state just moves it a few steps back on the same road that leads to the deadlock.
-
-	Rollback may be attempted a few times before trying another strategy.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Armageddon}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/defcon.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Armageddon}
-
-	Armageddon - the end of the world.
-
-	If a deadlock has occurred, sometimes the best thing to do is reboot the system.
-
-	This has a side effect of killing all processes, whether they are stuck or not, but is sometimes the best way to make sure that the system is in a valid state.
-
-	NASA's Spirit rover relies on this strategy if it detects a deadlock.
-
-	Like killing all affected processes, it is easy to implement, but is most disruptive.
-
-\end{frame}
-
 \begin{frame}
 	\frametitle{Victim Selection}
 
@@ -586,6 +511,82 @@ One way to implement this is via a watchdog timer.
 	It may be advisable to take the number of rollbacks or terminations into account so that no process in particular is starved.
 
 \end{frame}
+
+
+\begin{frame}
+	\frametitle{Next Idea: Back we Go...}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/bttf.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Time Travel}
+
+	\alert{Rollback}: returning the state of a process to a saved state from an earlier time.
+
+	There must be a saved state that was created in advance of a problem. \\
+	\quad Otherwise there is no state to roll back to!
+
+	The saved state is called a \alert{checkpoint} and the act of creating and saving a checkpoint is called \alert{checkpointing}.
+
+	Checkpoints may be created periodically or before beginning a particular operation that requires a lot of resources.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Time Travel}
+
+	A checkpoint contains the memory image, including the call stack, and resource state of a process.
+
+	It is written to disk and will usually persist as long as the process executes.
+
+	You might already be somewhat familiar with the concept of rollbacks if you have used version control software like Subversion (\texttt{svn}) or Git (\texttt{git}).
+
+	Rollbacks are also common in databases.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Time Travel}
+
+	Unfortunately, rollback does not always succeed.
+
+	Sometimes moving the process back to an earlier state just moves it a few steps back on the same road that leads to the deadlock.
+
+	Rollback may be attempted a few times before trying another strategy.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Armageddon}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/defcon.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Armageddon}
+
+	Armageddon - the end of the world.
+
+	If a deadlock has occurred, sometimes the best thing to do is reboot the system.
+
+	This has a side effect of killing all processes, whether they are stuck or not, but is sometimes the best way to make sure that the system is in a valid state.
+
+	NASA's Spirit rover relies on this strategy if it detects a deadlock.
+
+	Like killing all affected processes, it is easy to implement, but is most disruptive.
+
+\end{frame}
+
 
 \begin{frame}
 	\frametitle{Miscarriages of Justice}
