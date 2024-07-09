@@ -71,7 +71,7 @@ The second category of errors should be familiar to you from earlier as a source
 \begin{multicols}{2}
 	\textbf{Thread P}\vspace{-2em}
 	\begin{verbatim}
-	 1. wait( a ) 
+	 1. wait( a )
 	 2. wait( b )
 	 3. [critical section]
 	 4. signal( a )
@@ -80,7 +80,7 @@ The second category of errors should be familiar to you from earlier as a source
 	\columnbreak
 	\textbf{Thread Q}\vspace{-2em}
 	\begin{verbatim}
-	 1. wait( b ) 
+	 1. wait( b )
 	 2. wait( a )
 	 3. [critical section]
 	 4. signal( b )
@@ -91,7 +91,7 @@ The second category of errors should be familiar to you from earlier as a source
 
 In this case, if the interleaving of these happens to work out in a couple of particular ways, then we get deadlock because thread P holds mutex \texttt{a} and thread Q holds mutex \texttt{b} and each waits for the mutex that the other one has. The example is slightly silly, of course, because it's super easy to see.
 
-Helgrind builds a directed graph of lock acquisitions. When a thread acquires a lock, Helgrind checks to see whether a cycle exists. If so, then there is potential for a deadlock~\cite{helgrind}. Helgrind will report as an error the initial order (the first order seen is the one viewed as ``correct'') and the ``incorrect'' order that is the source of the potential problem. Really, though, all that matters is consistency---following the same order. You may change either of the acquisition orders to match the other. 
+Helgrind builds a directed graph of lock acquisitions. When a thread acquires a lock, Helgrind checks to see whether a cycle exists. If so, then there is potential for a deadlock~\cite{helgrind}. Helgrind will report as an error the initial order (the first order seen is the one viewed as ``correct'') and the ``incorrect'' order that is the source of the potential problem. Really, though, all that matters is consistency---following the same order. You may change either of the acquisition orders to match the other.
 
 How does Helgrind work? It examines the use of the standard threading primitives---lock, unlock, signal/post, wait, etc. Anything that implies there might be an ordering between events is taken and added to a directed acyclic graph that represents these dependencies. If memory is accessed from two different threads and there is no path through this directed acyclic graph that indicates an ordering, then Helgrind reports a race~\cite{helgrind}. Obviously, at least one of these accesses must be a write. (Recall: there is no read after read dependency).
 
@@ -104,7 +104,7 @@ Also cool: you can ask Helgrind to try to tell you about variable names (if it c
 
 These will give you indications of where you need to introduce synchronization of some kind (semaphore, mutex, condition variable, etc). The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races. You might find this frustrating, in the sense of a serial complainer who thinks that he or she can just moan about what's wrong without bringing forward any suggestions about how to fix the problems.
 
-We'll again take some time to examine some examples of each category of problem (as time allows). 
+We'll again take some time to examine some examples of each category of problem (as time allows).
 
 \input{bibliography.tex}
 

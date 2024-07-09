@@ -5,7 +5,7 @@
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -165,7 +165,7 @@ That's the ideal. But is this realistic?
 \begin{frame}
 \frametitle{Not My Problem?}
 
-It's also important to learn what to ignore (or what's out of our hands). 
+It's also important to learn what to ignore (or what's out of our hands).
 
 Example: it's thread creation or a library or similar. What do we do?
 
@@ -253,7 +253,7 @@ Let's do some examples.
 	\begin{multicols}{2}
 		\textbf{Thread P}
 		\begin{verbatim}
-	 1. wait( a ) 
+	 1. wait( a )
 	 2. wait( b )
 	 3. [critical section]
 	 4. signal( a )
@@ -262,7 +262,7 @@ Let's do some examples.
 		\columnbreak
 		\textbf{Thread Q}
 		\begin{verbatim}
-	 1. wait( b ) 
+	 1. wait( b )
 	 2. wait( a )
 	 3. [critical section]
 	 4. signal( b )
