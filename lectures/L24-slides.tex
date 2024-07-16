@@ -2,10 +2,11 @@
 
 \title{Lecture 24 --- Concurrency in File Systems }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\author{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi \\ \small \texttt{jzarnett@uwaterloo.ca}, \texttt{smzahedi@uwaterloo.ca}}
+
 \institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
-\date{\today}
+\date{}
 
 
 \begin{document}
@@ -286,7 +287,7 @@ struct flock {
 \begin{frame}
 	\frametitle{Das war ein Befehl!}
 
-	For \texttt{command}, our choices are~\cite{apunix}:
+	For \texttt{command}, our choices are:
 	\begin{itemize}
 		\item \texttt{F\_GETLK}
 		\item \texttt{F\_SETLK}
@@ -312,7 +313,7 @@ struct flock {
 	\frametitle{Lock Usage Example}
 
 	\begin{lstlisting}[language=C]
-int write_lock_file( int file_descriptor ) {
+int write_lock_file( int fd ) {
 
   struct flock fl;
   fl.l_type = F_WRLOCK;
@@ -323,7 +324,7 @@ int write_lock_file( int file_descriptor ) {
   return fcntl( fd, F_SETLK, &fl );
 }
 
-int unlock_file( int file_descriptor ) {
+int unlock_file( int fd ) {
 
   struct flock fl;
   fl.l_type = F_UNLCK;
@@ -561,11 +562,6 @@ void* run( void* arg ) {
 \begin{frame}[fragile]
 	\frametitle{Using a File as a Lock}
 	\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  /* Write data implementation not shown */
-  pthread_exit(NULL);
-}
-
 int main( int argc, char** argv ) {
   lock_fd = open( "file.lock", O_CREAT | O_EXCL );  
   if (lock_fd == -1 ) {

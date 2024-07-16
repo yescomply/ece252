@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 24 --- Concurrency in File Systems }{\term}{Jeff Zarnett}
+\lecture{ 24 --- Concurrency in File Systems }{\term}{Prepared by Jeff Zarnett, taught by Seyed Majid Zahedi}
 
 \section*{Concurrency in File Systems}
 
@@ -192,11 +192,6 @@ void* run( void* arg ) {
   rename("file.locked", "file.lock"); /* Unlock */
 
   free( arg );
-  pthread_exit(NULL);
-}
-
-void* writer( void* arg ) {
-  /* Write data implementation not shown */
   pthread_exit(NULL);
 }
 
