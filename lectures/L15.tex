@@ -14,7 +14,7 @@ There are a couple of rules to be aware of. It is not possible to write into a b
 
 To keep track of the number of items in the buffer, we will have some variable \texttt{count}. This is a variable shared between more than one thread, and therefore access to this should be controlled with mutual exclusion. Let us assume the maximum number of elements in the buffer is defined as \texttt{BUFFER\_SIZE}.
 
-If busy-waiting is permitted, that is, we do not care if we are wasting CPU time, we can get away with one mutex, which we can call \texttt{mutex}. Each of the producer and consumer threads very likely run in an infinite loop on their own, but the code below is the sufficient to explain one iteration.
+If busy-waiting is permitted, that is, we do not care if we are wasting CPU time, we can get away with one mutex, which we can call \texttt{mutex}. Each of the producer and consumer threads very likely run in an infinite loop on their own, but the code below is sufficient to explain one iteration.
 
 \begin{multicols}{2}
 	\textbf{Producer}\vspace{-2em}
